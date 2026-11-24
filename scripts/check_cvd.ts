@@ -1,72 +1,72 @@
 // ============================================================
-// Valida a SEPARAÇÃO PERCEPTUAL das cores sob daltonismo. Falha
-// (exit 1) se um par cair abaixo do piso — integrado ao `npm run check`.
+// Validates the PERCEPTUAL SEPARATION of colours under colour blindness.
+// Fails (exit 1) if a pair falls below its floor — wired into `npm run check`.
 //
-// Roda para a BASE e para cada variante (overlays em palette/).
+// Runs for the BASE and for every variant (overlays in palette/).
 //
-// A escada de luminosidade da palette foi projetada para visão
-// vermelho-verde deficiente, mas nada a vigiava: o check de contraste
-// mede razões WCAG (legibilidade contra o fundo), não a distância
-// ENTRE cores de sintaxe — que é o que separa keyword de tipo para
-// quem tem protanopia. Este check fecha esse buraco.
+// The palette's lightness ladder was designed for red-green deficient
+// vision, but nothing was watching it: the contrast check measures WCAG
+// ratios (legibility against the background), not the distance BETWEEN
+// syntax colours — which is what separates keyword from type for someone
+// with protanopia. This check closes that gap.
 //
-// Método (o mesmo dos estudos que calibraram a palette — os ΔE citados
-// em CHANGELOG e nos comentários do YAML reproduzem-se aqui):
-//   1. simula protanopia e deuteranopia com as matrizes de
-//      Machado et al. 2009, severidade 1.0, em RGB linear;
-//   2. mede ΔE como distância euclidiana em OKLAB × 100.
-// Referência de escala: ΔE 2 é quase indistinguível; 6 é o mínimo que
-// a palette aceita; 10+ é confortável.
+// Method (the same as the studies that calibrated the palette — the ΔE
+// values quoted in the CHANGELOG and in the YAML comments reproduce here):
+//   1. simulate protanopia and deuteranopia with the Machado et al. 2009
+//      matrices, severity 1.0, in linear RGB;
+//   2. measure ΔE as Euclidean distance in OKLAB × 100.
+// Scale reference: ΔE 2 is nearly indistinguishable; 6 is the minimum the
+// palette accepts; 10+ is comfortable.
 //
-// `npx tsx scripts/check_cvd.ts --matriz` imprime todos os pares de
-// sintaxe nas três visões, para inspeção ao ajustar a palette.
+// `npx tsx scripts/check_cvd.ts --matrix` prints every syntax pair in all
+// three visions, for inspection while tuning the palette.
 // ============================================================
 
 import { join } from "node:path";
 import { PaletteFile, loadAllPalettes, BRACKETS } from "../src/lib/palette";
 
 type V3 = [number, number, number];
-type Visao = "normal" | "protanopia" | "deuteranopia";
+type Vision = "normal" | "protanopia" | "deuteranopia";
 
-// Piso global: nenhum par de cores de sintaxe pode ficar abaixo disto em
-// nenhuma visão. Herdado do Papilio, onde tipo × atributo chegaram a ΔE 0.6
-// sob protanopia antes de existir este gate.
-const PISO_SINTAXE = 6.0;
+// Global floor: no pair of syntax colours may fall below this in any
+// vision. Inherited from Papilio, where type × attribute got down to ΔE 0.6
+// under protanopia before this gate existed.
+const SYNTAX_FLOOR = 6.0;
 
-// Roles de estado/markup de diff. O YAML já declara a exceção: "Colidem com
-// alguns tokens de sintaxe sob daltonismo, e isso é aceito de propósito:
-// sempre aparecem com fundo tingido, sublinhado ou marcador de gutter
-// reforçando". Um par cai neste piso rebaixado quando um dos lados só é
-// usado por estes roles — o piso residual existe para impedir cores
-// IDÊNTICAS, que nenhum segundo canal salva.
-const ROLES_DE_ESTADO = new Set(["inserted", "deleted", "changed"]);
-const PISO_ESTADOS = 2.5;
+// State/diff markup roles. The YAML already declares the exception: "They
+// collide with some syntax tokens under colour blindness, and that is
+// accepted: they always come with a tinted background, underline or gutter
+// marker as reinforcement". A pair falls to this lowered floor when one side
+// is used only by these roles — the residual floor exists to prevent
+// IDENTICAL colours, which no second channel can rescue.
+const STATE_ROLES = new Set(["inserted", "deleted", "changed"]);
+const STATE_FLOOR = 2.5;
 
-// Pares que o design cita nominalmente, com o piso da decisão documentada.
-// Se um ajuste futuro da palette derrubar um destes, o build para.
-// Valem para a base E para as variantes: variante que fura um destes pisos
-// não é "drama", é outra paleta.
-const PARES_NOMEADOS: { a: string; b: string; visao: Visao; piso: number; motivo: string }[] = [
-  { a: "scarlet", b: "muted", visao: "protanopia", piso: 6.5,
-    motivo: "sob protanopia o scarlet escurece para L ~.56; o comentário subiu para L .62 para sair de cima dele (era 5.7)" },
-  { a: "orchid", b: "fg1", visao: "deuteranopia", piso: 6.0,
-    motivo: "número × pontuação: o rosa h352 virava o cinza do fg1 (ΔE 2.0); o orquídea h326 guarda b* negativo" },
-  { a: "scarlet", b: "fg1", visao: "deuteranopia", piso: 10.0,
-    motivo: "tag encosta na pontuação em todo <div>" },
-  { a: "lilac", b: "jade", visao: "deuteranopia", piso: 6.0,
-    motivo: "<Componente atributo=…>: tipo e atributo lado a lado (o itálico do atributo é o segundo canal)" },
-  { a: "jade", b: "gold", visao: "protanopia", piso: 8.0,
-    motivo: "função × string, os dois tokens mais claros da sintaxe" },
-  { a: "scarlet", b: "orchid", visao: "protanopia", piso: 10.0,
-    motivo: "keyword × constante (return true, const X = 1)" },
+// Pairs the design names explicitly, with the floor of the documented
+// decision. If a future palette tweak drops one of these, the build stops.
+// They apply to the base AND the variants: a variant that breaks one of
+// these floors isn't a variant, it's a different palette.
+const NAMED_PAIRS: { a: string; b: string; vision: Vision; floor: number; reason: string }[] = [
+  { a: "scarlet", b: "muted", vision: "protanopia", floor: 6.5,
+    reason: "under protanopia scarlet darkens to L ~.56; comments were raised to L .62 to get clear of it (was 5.7)" },
+  { a: "orchid", b: "fg1", vision: "deuteranopia", floor: 6.0,
+    reason: "number × punctuation: the h352 pink became fg1's grey (ΔE 2.0); orchid h326 keeps a negative b*" },
+  { a: "scarlet", b: "fg1", vision: "deuteranopia", floor: 10.0,
+    reason: "tags touch punctuation in every <div>" },
+  { a: "lilac", b: "jade", vision: "deuteranopia", floor: 6.0,
+    reason: "<Component attribute=…>: type and attribute side by side (the attribute's italics are the second channel)" },
+  { a: "jade", b: "gold", vision: "protanopia", floor: 8.0,
+    reason: "function × string, the two lightest syntax tokens" },
+  { a: "scarlet", b: "orchid", vision: "protanopia", floor: 10.0,
+    reason: "keyword × constant (return true, const X = 1)" },
 ];
 
 // ------------------------------------------------------------
-// Simulação e métrica
+// Simulation and metric
 // ------------------------------------------------------------
 
-// Machado, Oliveira & Fernandes 2009, severidade 1.0, aplicadas em RGB linear.
-const MACHADO: Record<Exclude<Visao, "normal">, number[][]> = {
+// Machado, Oliveira & Fernandes 2009, severity 1.0, applied in linear RGB.
+const MACHADO: Record<Exclude<Vision, "normal">, number[][]> = {
   protanopia: [
     [0.152286, 1.052583, -0.204868],
     [0.114503, 0.786281, 0.099216],
@@ -79,16 +79,16 @@ const MACHADO: Record<Exclude<Visao, "normal">, number[][]> = {
   ],
 };
 
-function hexParaLinear(hex: string): V3 {
+function hexToLinear(hex: string): V3 {
   return [1, 3, 5].map((i) => {
-    const canal = parseInt(hex.slice(i, i + 2), 16) / 255;
-    return canal <= 0.04045 ? canal / 12.92 : Math.pow((canal + 0.055) / 1.055, 2.4);
+    const ch = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return ch <= 0.04045 ? ch / 12.92 : Math.pow((ch + 0.055) / 1.055, 2.4);
   }) as V3;
 }
 
-function simula(rgb: V3, visao: Visao): V3 {
-  if (visao === "normal") return rgb;
-  const m = MACHADO[visao];
+function simulate(rgb: V3, vision: Vision): V3 {
+  if (vision === "normal") return rgb;
+  const m = MACHADO[vision];
   return m.map((l) =>
     Math.min(1, Math.max(0, l[0] * rgb[0] + l[1] * rgb[1] + l[2] * rgb[2]))
   ) as V3;
@@ -106,136 +106,137 @@ function oklab(rgb: V3): V3 {
   ];
 }
 
-/** ΔE entre dois hex sob uma visão: distância OKLAB × 100. */
-function deltaE(hexA: string, hexB: string, visao: Visao): number {
-  const a = oklab(simula(hexParaLinear(hexA), visao));
-  const b = oklab(simula(hexParaLinear(hexB), visao));
+/** ΔE between two hex values under one vision: OKLAB distance × 100. */
+function deltaE(hexA: string, hexB: string, vision: Vision): number {
+  const a = oklab(simulate(hexToLinear(hexA), vision));
+  const b = oklab(simulate(hexToLinear(hexB), vision));
   return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) * 100;
 }
 
 // ------------------------------------------------------------
-// Execução
+// Run
 // ------------------------------------------------------------
-const VISOES: Visao[] = ["normal", "protanopia", "deuteranopia"];
-let falhas = 0;
+const VISIONS: Vision[] = ["normal", "protanopia", "deuteranopia"];
+let failures = 0;
 
-function tabela(titulo: string, cab: string[], linhas: string[][]): void {
-  const larguras = cab.map((h, i) => Math.max(h.length, ...linhas.map((l) => l[i].length)));
-  const fmt = (l: string[]) => l.map((cel, i) => cel.padEnd(larguras[i])).join("  ");
-  console.log(`\n${titulo}\n`);
-  console.log(fmt(cab));
-  console.log(larguras.map((w) => "-".repeat(w)).join("  "));
-  for (const l of linhas) console.log(fmt(l));
+function table(title: string, head: string[], rows: string[][]): void {
+  const widths = head.map((h, i) => Math.max(h.length, ...rows.map((l) => l[i].length)));
+  const fmt = (l: string[]) => l.map((cell, i) => cell.padEnd(widths[i])).join("  ");
+  console.log(`\n${title}\n`);
+  console.log(fmt(head));
+  console.log(widths.map((w) => "-".repeat(w)).join("  "));
+  for (const l of rows) console.log(fmt(l));
 }
 
-function rodaPaleta(p: PaletteFile): void {
+function runPalette(p: PaletteFile): void {
   const c = p.palette;
-  const nome = p.meta.name;
+  const name = p.meta.name;
 
-  // Tokens distintos usados em roles.syntax, com os roles que os usam.
-  // Dedupe por token: quote=muted e keyword=tag=crimson são compartilhamentos
-  // deliberados — o que se mede é a distância entre CORES diferentes.
-  const usoPorToken = new Map<string, string[]>();
+  // Distinct tokens used in roles.syntax, with the roles that use them.
+  // Deduped by token: quote=muted and keyword=tag=scarlet are deliberate
+  // shares — what is measured is the distance between DIFFERENT colours.
+  const usesByToken = new Map<string, string[]>();
   for (const [role, token] of Object.entries(p.roles.syntax)) {
-    usoPorToken.set(token, [...(usoPorToken.get(token) ?? []), role]);
+    usesByToken.set(token, [...(usesByToken.get(token) ?? []), role]);
   }
-  const tokens = [...usoPorToken.keys()].sort();
-  const soEstado = (token: string) =>
-    usoPorToken.get(token)!.every((role) => ROLES_DE_ESTADO.has(role));
+  const tokens = [...usesByToken.keys()].sort();
+  const stateOnly = (token: string) =>
+    usesByToken.get(token)!.every((role) => STATE_ROLES.has(role));
 
-  // 1. Piso global sobre todos os pares de sintaxe, nas três visões.
-  // A tabela imprime só o que está abaixo do nível de atenção (12) — o
-  // resto é folga; a matriz completa sai com --matriz.
-  const ATENCAO = 12;
-  const linhasSintaxe: string[][] = [];
+  // 1. Global floor over every syntax pair, in all three visions.
+  // The table prints only what sits below the attention level (12) — the
+  // rest is headroom; the full matrix comes out with --matrix.
+  const ATTENTION = 12;
+  const syntaxRows: string[][] = [];
   for (let i = 0; i < tokens.length; i++) {
     for (let j = i + 1; j < tokens.length; j++) {
       const [a, b] = [tokens[i], tokens[j]];
-      const estado = soEstado(a) || soEstado(b);
-      const piso = estado ? PISO_ESTADOS : PISO_SINTAXE;
-      for (const visao of VISOES) {
-        const dE = deltaE(c[a], c[b], visao);
-        const ok = dE >= piso;
-        if (!ok) falhas++;
-        if (dE < ATENCAO || !ok) {
-          linhasSintaxe.push([
+      const state = stateOnly(a) || stateOnly(b);
+      const floor = state ? STATE_FLOOR : SYNTAX_FLOOR;
+      for (const vision of VISIONS) {
+        const dE = deltaE(c[a], c[b], vision);
+        const ok = dE >= floor;
+        if (!ok) failures++;
+        if (dE < ATTENTION || !ok) {
+          syntaxRows.push([
             `${a}×${b}`,
-            visao,
+            vision,
             dE.toFixed(1),
-            piso.toFixed(1) + (estado ? " (estado)" : ""),
-            ok ? "✔" : "✘ ABAIXO",
+            floor.toFixed(1) + (state ? " (state)" : ""),
+            ok ? "✔" : "✘ BELOW",
           ]);
         }
       }
     }
   }
-  linhasSintaxe.sort((x, y) => parseFloat(x[2]) - parseFloat(y[2]));
-  tabela(
-    `[${nome}] pares de sintaxe abaixo do nível de atenção (ΔE < ${ATENCAO}; piso ${PISO_SINTAXE}):`,
-    ["par", "visão", "ΔE", "piso", "status"],
-    linhasSintaxe
+  syntaxRows.sort((x, y) => parseFloat(x[2]) - parseFloat(y[2]));
+  table(
+    `[${name}] syntax pairs below the attention level (ΔE < ${ATTENTION}; floor ${SYNTAX_FLOOR}):`,
+    ["pair", "vision", "ΔE", "floor", "status"],
+    syntaxRows
   );
 
-  // 2. Pares nomeados: as decisões de design viram asserções.
-  tabela(
-    `[${nome}] pares nomeados do design:`,
-    ["par", "visão", "ΔE", "piso", "status"],
-    PARES_NOMEADOS.map(({ a, b, visao, piso }) => {
-      const dE = deltaE(c[a], c[b], visao);
-      const ok = dE >= piso;
-      if (!ok) falhas++;
-      return [`${a}×${b}`, visao, dE.toFixed(1), piso.toFixed(1), ok ? "✔" : "✘ ABAIXO"];
+  // 2. Named pairs: design decisions become assertions.
+  table(
+    `[${name}] named design pairs:`,
+    ["pair", "vision", "ΔE", "floor", "status"],
+    NAMED_PAIRS.map(({ a, b, vision, floor }) => {
+      const dE = deltaE(c[a], c[b], vision);
+      const ok = dE >= floor;
+      if (!ok) failures++;
+      return [`${a}×${b}`, vision, dE.toFixed(1), floor.toFixed(1), ok ? "✔" : "✘ BELOW"];
     })
   );
 
-  // 3. Brackets: o conjunto sem segundo canal. Mede as cores DISTINTAS dos
-  // níveis entre si (Cadenza cicla três) e cada uma contra o bracket-erro.
-  const PISO_BRACKETS = 6.0;
-  const conjuntoBrackets = [...new Set<string>(BRACKETS), "error"];
-  const linhasBrackets: string[][] = [];
-  for (let i = 0; i < conjuntoBrackets.length; i++) {
-    for (let j = i + 1; j < conjuntoBrackets.length; j++) {
-      const [a, b] = [conjuntoBrackets[i], conjuntoBrackets[j]];
-      for (const visao of VISOES) {
-        const dE = deltaE(c[a], c[b], visao);
-        const ok = dE >= PISO_BRACKETS;
-        if (!ok) falhas++;
-        if (dE < ATENCAO || !ok) {
-          linhasBrackets.push([`${a}×${b}`, visao, dE.toFixed(1), PISO_BRACKETS.toFixed(1), ok ? "✔" : "✘ ABAIXO"]);
+  // 3. Brackets: the set with no second channel. Measures the DISTINCT level
+  // colours against each other (Cadenza cycles three) and each one against
+  // the error bracket.
+  const BRACKET_FLOOR = 6.0;
+  const bracketSet = [...new Set<string>(BRACKETS), "error"];
+  const bracketRows: string[][] = [];
+  for (let i = 0; i < bracketSet.length; i++) {
+    for (let j = i + 1; j < bracketSet.length; j++) {
+      const [a, b] = [bracketSet[i], bracketSet[j]];
+      for (const vision of VISIONS) {
+        const dE = deltaE(c[a], c[b], vision);
+        const ok = dE >= BRACKET_FLOOR;
+        if (!ok) failures++;
+        if (dE < ATTENTION || !ok) {
+          bracketRows.push([`${a}×${b}`, vision, dE.toFixed(1), BRACKET_FLOOR.toFixed(1), ok ? "✔" : "✘ BELOW"]);
         }
       }
     }
   }
-  linhasBrackets.sort((x, y) => parseFloat(x[2]) - parseFloat(y[2]));
-  tabela(
-    `[${nome}] brackets (níveis 1-6 + bracket não fechado) abaixo do nível de atenção:`,
-    ["par", "visão", "ΔE", "piso", "status"],
-    linhasBrackets
+  bracketRows.sort((x, y) => parseFloat(x[2]) - parseFloat(y[2]));
+  table(
+    `[${name}] brackets (levels 1-6 + unclosed bracket) below the attention level:`,
+    ["pair", "vision", "ΔE", "floor", "status"],
+    bracketRows
   );
 
-  // Modo de inspeção: a matriz completa, para quando se ajusta a palette.
-  if (process.argv.includes("--matriz")) {
-    const linhas: string[][] = [];
+  // Inspection mode: the full matrix, for when the palette is being tuned.
+  if (process.argv.includes("--matrix")) {
+    const rows: string[][] = [];
     for (let i = 0; i < tokens.length; i++) {
       for (let j = i + 1; j < tokens.length; j++) {
         const [a, b] = [tokens[i], tokens[j]];
-        linhas.push([
+        rows.push([
           `${a}×${b}`,
-          `(${usoPorToken.get(a)!.join(",")} × ${usoPorToken.get(b)!.join(",")})`,
-          ...VISOES.map((v) => deltaE(c[a], c[b], v).toFixed(1)),
+          `(${usesByToken.get(a)!.join(",")} × ${usesByToken.get(b)!.join(",")})`,
+          ...VISIONS.map((v) => deltaE(c[a], c[b], v).toFixed(1)),
         ]);
       }
     }
-    linhas.sort((x, y) => parseFloat(x[2]) - parseFloat(y[2]));
-    tabela(`[${nome}] matriz completa (ordenada pelo ΔE normal):`, ["par", "roles", "normal", "protan", "deutan"], linhas);
+    rows.sort((x, y) => parseFloat(x[2]) - parseFloat(y[2]));
+    table(`[${name}] full matrix (sorted by normal ΔE):`, ["pair", "roles", "normal", "protan", "deutan"], rows);
   }
 }
 
-const paletas = loadAllPalettes(join(import.meta.dirname, "..", "palette"));
-for (const { p } of paletas) rodaPaleta(p);
+const palettes = loadAllPalettes(join(import.meta.dirname, "..", "palette"));
+for (const { p } of palettes) runPalette(p);
 
-if (falhas > 0) {
-  console.error(`\n✘ ${falhas} par(es) abaixo do piso de separação. Ajuste palette/*.yaml.`);
+if (failures > 0) {
+  console.error(`\n✘ ${failures} pair(s) below the separation floor. Adjust palette/*.yaml.`);
   process.exit(1);
 }
-console.log(`\n✔ Separação perceptual dentro dos pisos (${paletas.length} paleta(s), 3 visões).`);
+console.log(`\n✔ Perceptual separation within floors (${palettes.length} palette(s), 3 visions).`);

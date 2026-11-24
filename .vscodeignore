@@ -1,7 +1,7 @@
-# O .vsix só precisa de themes/*.json + package.json + README + LICENSE + ícone.
-# references/ é o mais importante: artes oficiais NUNCA entram no pacote.
-# As imagens do README são reescritas pelo vsce para URLs do GitHub, então
-# os previews também ficam de fora.
+# The .vsix only needs themes/*.json + package.json + README + LICENSE + icon.
+# references/ matters most: official artwork NEVER goes into the package.
+# vsce rewrites the README images to GitHub URLs, so the previews stay out
+# too.
 .git/**
 .gitignore
 .vscodeignore

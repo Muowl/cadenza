@@ -1,11 +1,11 @@
-// comentário de linha
-import { Botao } from "./botao";
+// line comment
+import { Button } from "./button";
 
-export function Cartao(props: CartaoProps) {
-  const rotulo = `Item: ${props.titulo}`;
+export function Card(props: CardProps) {
+  const label = `Item: ${props.title}`;
   return (
-    <section className="cartao">
-      <Botao onClick={props.enviar}>{rotulo}</Botao>
+    <section className="card">
+      <Button onClick={props.submit}>{label}</Button>
     </section>
   );
 }

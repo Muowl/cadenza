@@ -1,8 +1,8 @@
-//! Setlist: ordena e toca as faixas de um show.
+//! Setlist: sorts and plays the tracks of a show.
 use std::collections::HashMap;
 use std::fmt;
 
-/// Uma faixa com duração em segundos.
+/// A track with its duration in seconds.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Track<'a> {
     pub title: &'a str,

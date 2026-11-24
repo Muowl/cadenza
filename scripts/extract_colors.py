@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Extrai as cores dominantes de imagens de referência (references/).
+Extracts the dominant colours of reference images (references/).
 
-Uso:
-  python scripts/extract_colors.py references/hutao-art.jpg
+Usage:
+  python scripts/extract_colors.py references/artwork.jpg
   python scripts/extract_colors.py references/*.png --colors 12 --json
 
-Requer: pip install Pillow
+Requires: pip install Pillow
 """
 import argparse
 import json
@@ -17,7 +17,7 @@ from pathlib import Path
 try:
     from PIL import Image
 except ImportError:
-    sys.exit("Pillow não instalado. Rode: pip install Pillow")
+    sys.exit("Pillow is not installed. Run: pip install Pillow")
 
 
 def luminance(r: int, g: int, b: int) -> float:
@@ -26,11 +26,11 @@ def luminance(r: int, g: int, b: int) -> float:
 
 def extract(path: Path, n_colors: int, skip_extremes: bool) -> list[dict]:
     img = Image.open(path).convert("RGB")
-    img.thumbnail((300, 300))  # acelera sem distorcer a distribuição
+    img.thumbnail((300, 300))  # faster without skewing the distribution
 
     quantized = img.quantize(colors=n_colors * 2, method=Image.Quantize.MEDIANCUT)
     palette = quantized.getpalette()
-    # get_flattened_data substitui getdata em versões novas do Pillow
+    # get_flattened_data replaces getdata in newer Pillow versions
     get_pixels = getattr(quantized, "get_flattened_data", quantized.getdata)
     counts = Counter(get_pixels())
     total = sum(counts.values())
@@ -39,7 +39,7 @@ def extract(path: Path, n_colors: int, skip_extremes: bool) -> list[dict]:
     for idx, count in counts.most_common():
         r, g, b = palette[idx * 3 : idx * 3 + 3]
         lum = luminance(r, g, b)
-        # Pula quase-preto e quase-branco: raramente viram token útil
+        # Skip near-black and near-white: they rarely make a useful token
         if skip_extremes and (lum < 18 or lum > 240):
             continue
         results.append({
@@ -52,18 +52,18 @@ def extract(path: Path, n_colors: int, skip_extremes: bool) -> list[dict]:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Extrai cores dominantes de imagens")
+    ap = argparse.ArgumentParser(description="Extract dominant colours from images")
     ap.add_argument("images", nargs="+", type=Path)
-    ap.add_argument("--colors", type=int, default=8, help="cores por imagem (padrão: 8)")
-    ap.add_argument("--json", action="store_true", help="saída em JSON")
+    ap.add_argument("--colors", type=int, default=8, help="colours per image (default: 8)")
+    ap.add_argument("--json", action="store_true", help="JSON output")
     ap.add_argument("--keep-extremes", action="store_true",
-                    help="não filtrar quase-preto/quase-branco")
+                    help="don't filter out near-black/near-white")
     args = ap.parse_args()
 
     output = {}
     for img_path in args.images:
         if not img_path.exists():
-            print(f"⚠ não encontrado: {img_path}", file=sys.stderr)
+            print(f"⚠ not found: {img_path}", file=sys.stderr)
             continue
         output[str(img_path)] = extract(img_path, args.colors, not args.keep_extremes)
 

@@ -1,15 +1,15 @@
 # ============================================================
-# VARIANTE "Cadenza Chandelier" — a roupa preta e branca da Astra
-# (skin Chandelier). O vermelho da jaqueta sai; o bronze das fitas
-# assume como acento.
+# VARIANT "Cadenza Chandelier" — Astra's black-and-white outfit
+# (the Chandelier skin). The jacket's red goes; the bronze of the
+# ribbons takes over as the accent.
 #
-# Isto é um OVERLAY: só o que muda. Todo o resto (texto, os outros
-# acentos, âncoras, roles não citados) vem de cadenza.yaml — ver
-# loadPaletteVariant em src/lib/palette.ts. Os três gates rodam nesta
-# variante igual à base.
+# This is an OVERLAY: only what changes. Everything else (text, the
+# other accents, anchors, roles not listed) comes from cadenza.yaml —
+# see loadPaletteVariant in src/lib/palette.ts. All three gates run on
+# this variant just like on the base.
 #
-# Para quem: quem quer o Cadenza sem vermelho na sintaxe. Aqui o
-# vermelho sobra para UMA coisa só — erro — e por isso pesa mais.
+# Who it's for: people who want Cadenza without red in the syntax. Here
+# red is left for ONE thing only — errors — and weighs more for it.
 # ============================================================
 
 meta:
@@ -17,23 +17,23 @@ meta:
   slug: "cadenza-chandelier"
   variant: "dark"
   author: "muowl"
-  description: "Variante sem vermelho na sintaxe: fundo mais escuro (o vestido preto) e bronze como acento."
+  description: "Variant without red in the syntax: a darker background (the black dress) and bronze as the accent."
 
 palette:
-  # Fundos um degrau mais escuros (L .145 no editor, perto do #0a0a0a da
-  # Vercel). A seleção não muda: o comentário continua a 4.09:1 sobre ela.
+  # Backgrounds one step darker (L .145 in the editor, close to #0a0a0a).
+  # The selection doesn't change: comments still sit at 4.09:1 on it.
   bg0: "#080a0b"        # L .145
   bg1: "#0e1112"        # L .175
   bg2: "#171a1b"        # L .215
   bg3: "#272b2d"        # L .285
 
-  # Bronze das fitas (âncora #a78464, h 64), clareado para leitura:
-  # L .74 C .09 h 62 — 8.43:1 no fundo. Mesma L do fg1, separado dele pelo
-  # croma: ΔE 8.4 no pior caso de daltonismo.
+  # Ribbon bronze (anchor #a78464, h 64), lightened for legibility:
+  # L .74 C .09 h 62 — 8.43:1 on the background. Same L as fg1, separated
+  # from it by chroma: ΔE 8.4 in the worst colour-blindness case.
   bronze: "#d49e6f"
 
-  # Erro vira o próprio vermelho da jaqueta: é o único vermelho da variante.
-  # O coral da base ficava a ΔE 4.1 do bronze sob deuteranopia.
+  # Errors take the jacket's own red: the variant's only red.
+  # The base's coral sat at ΔE 4.1 from bronze under deuteranopia.
   error: "#f05252"
 
 roles:

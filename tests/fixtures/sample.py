@@ -1,4 +1,4 @@
-"""Setlist: ordena e toca as faixas de um show."""
+"""Setlist: sorts and plays the tracks of a show."""
 from __future__ import annotations
 
 import re

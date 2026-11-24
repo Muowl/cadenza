@@ -5,7 +5,7 @@ import java.util.Optional;
 
 /**
  * Toca o encore quando a plateia pede.
- * @param <T> tipo da faixa
+ * @param <T> track type
  */
 @FunctionalInterface
 interface Player<T> { void play(T track); }

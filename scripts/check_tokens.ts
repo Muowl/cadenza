@@ -1,374 +1,374 @@
 // ============================================================
-// Valida a TOKENIZAÇÃO real do tema. Falha (exit 1) se um token
-// de um fixture resolver para cor ou fontStyle errados.
+// Validates the theme's real TOKENIZATION. Fails (exit 1) if a token
+// in a fixture resolves to the wrong colour or fontStyle.
 //
-// É o "Developer: Inspect Editor Tokens and Scopes" automatizado:
-// usa o MESMO motor do VS Code (vscode-textmate + vscode-oniguruma)
-// e as gramáticas publicadas (tests/grammars/, vendidas do repositório
-// microsoft/vscode), então o que passa aqui é o que o editor pinta.
+// It is "Developer: Inspect Editor Tokens and Scopes", automated:
+// uses the SAME engine as VS Code (vscode-textmate + vscode-oniguruma)
+// and the published grammars (tests/grammars/, vendored from the
+// microsoft/vscode repository), so what passes here is what the editor paints.
 //
-// O que este check protege:
-//   - o itálico restrito a comentário / parâmetro / atributo HTML —
-//     inclusive a regra de exceção para seletores CSS/LESS/SCSS, cujo
-//     vazamento (todo seletor .less em itálico) já aconteceu uma vez;
-//   - o trio tag / attribute / componente em HTML e JSX, que é onde
-//     as decisões de cor mais disputadas do tema se encontram.
+// What this check protects:
+//   - italics limited to comments / parameters / HTML attributes —
+//     including the exception rule for CSS/LESS/SCSS selectors, whose
+//     leak (every .less selector in italics) has happened once already;
+//   - the tag / attribute / component trio in HTML and JSX, where the
+//     theme's most contested colour decisions meet.
 //
-// O tema é gerado EM MEMÓRIA a partir do YAML (não lê themes/*.json),
-// então o check não depende da ordem build/check.
+// The theme is generated IN MEMORY from the YAML (themes/*.json is not
+// read), so the check doesn't depend on build/check order.
 // ============================================================
 
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
-import { vsctm, criaRegistry, tokenizaArquivo, pintaEscopos, ESCOPO_POR_EXTENSAO, TokenPintado } from "./lib/textmate";
+import { vsctm, createRegistry, tokenizeFile, paintScopes, SCOPE_BY_EXTENSION, PaintedToken } from "./lib/textmate";
 import { PaletteFile, loadAllPalettes } from "../src/lib/palette";
 import { generateVscodeTheme } from "../src/generators/vscode";
 
-const raiz = join(import.meta.dirname, "..");
+const root = join(import.meta.dirname, "..");
 
 // ------------------------------------------------------------
-// Casos: cada linha diz "este trecho deste fixture sai nesta cor,
-// com ou sem itálico". A cor é um role de roles.syntax (ou um token
-// da palette, para punctuation de tag etc.) — nunca hex solto.
-// A âncora é o PRIMEIRO caractere da primeira ocorrência do trecho
-// na linha indicada.
+// Cases: each line says "this snippet of this fixture comes out in this
+// colour, with or without italics". The colour is a roles.syntax role (or a
+// palette token, for tag punctuation etc.) — never a loose hex.
+// The anchor is the FIRST character of the snippet's first occurrence on
+// the given line.
 // ------------------------------------------------------------
-interface Caso {
-  arquivo: string;
-  linha: number;      // 1-based
-  trecho: string;
-  role: string;       // chave de roles.syntax
-  italico: boolean;
+interface Case {
+  file: string;
+  line: number;       // 1-based
+  snippet: string;
+  role: string;       // roles.syntax key
+  italic: boolean;
 }
 
-const casos: Caso[] = [
-  // CSS — seletores NÃO herdam o itálico de atributo HTML
-  { arquivo: "sample.css", linha: 1, trecho: "comentário", role: "comment", italico: true },
-  { arquivo: "sample.css", linha: 2, trecho: "cartao", role: "type", italico: false },
-  { arquivo: "sample.css", linha: 2, trecho: "hover", role: "type", italico: false },
-  { arquivo: "sample.css", linha: 2, trecho: "after", role: "type", italico: false },
-  { arquivo: "sample.css", linha: 2, trecho: "color", role: "variable", italico: false },
-  { arquivo: "sample.css", linha: 3, trecho: "principal", role: "type", italico: false },
+const cases: Case[] = [
+  // CSS — selectors do NOT inherit the HTML attribute italics
+  { file: "sample.css", line: 1, snippet: "comment", role: "comment", italic: true },
+  { file: "sample.css", line: 2, snippet: "card", role: "type", italic: false },
+  { file: "sample.css", line: 2, snippet: "hover", role: "type", italic: false },
+  { file: "sample.css", line: 2, snippet: "after", role: "type", italic: false },
+  { file: "sample.css", line: 2, snippet: "color", role: "variable", italic: false },
+  { file: "sample.css", line: 3, snippet: "main", role: "type", italic: false },
 
-  // LESS — o vazamento corrigido: escopos .less não eram cobertos
-  { arquivo: "sample.less", linha: 1, trecho: "comentário", role: "comment", italico: true },
-  { arquivo: "sample.less", linha: 2, trecho: "botao", role: "type", italico: false },
-  { arquivo: "sample.less", linha: 3, trecho: "topo", role: "type", italico: false },
-  { arquivo: "sample.less", linha: 3, trecho: "hover", role: "type", italico: false },
-  { arquivo: "sample.less", linha: 5, trecho: "__titulo", role: "type", italico: false },
-  { arquivo: "sample.less", linha: 6, trecho: "extend", role: "type", italico: false },
+  // LESS — the fixed leak: .less scopes weren't covered
+  { file: "sample.less", line: 1, snippet: "comment", role: "comment", italic: true },
+  { file: "sample.less", line: 2, snippet: "button", role: "type", italic: false },
+  { file: "sample.less", line: 3, snippet: "top", role: "type", italic: false },
+  { file: "sample.less", line: 3, snippet: "hover", role: "type", italic: false },
+  { file: "sample.less", line: 5, snippet: "__title", role: "type", italic: false },
+  { file: "sample.less", line: 6, snippet: "extend", role: "type", italic: false },
 
-  // SCSS — %placeholder e o sufixo &__elem do BEM
-  { arquivo: "sample.scss", linha: 1, trecho: "comentário", role: "comment", italico: true },
-  { arquivo: "sample.scss", linha: 2, trecho: "base", role: "type", italico: false },
-  { arquivo: "sample.scss", linha: 3, trecho: "cartao", role: "type", italico: false },
-  // A gramática SCSS marca o identificador do sufixo `&__elem` inteiro como
-  // punctuation.definition.entity.css (dentro do escopo de parent-selector-
-  // suffix), então a cor final é a de pontuação — diferente do LESS, que dá
-  // ember. O que este caso trava é o ITÁLICO: antes do fix o sufixo herdava
-  // o itálico de atributo HTML mesmo saindo em fg1.
-  { arquivo: "sample.scss", linha: 4, trecho: "__titulo", role: "punctuation", italico: false },
-  { arquivo: "sample.scss", linha: 5, trecho: "hover", role: "type", italico: false },
+  // SCSS — %placeholder and BEM's &__elem suffix
+  { file: "sample.scss", line: 1, snippet: "comment", role: "comment", italic: true },
+  { file: "sample.scss", line: 2, snippet: "base", role: "type", italic: false },
+  { file: "sample.scss", line: 3, snippet: "card", role: "type", italic: false },
+  // The SCSS grammar marks the whole `&__elem` suffix identifier as
+  // punctuation.definition.entity.css (inside the parent-selector-suffix
+  // scope), so the final colour is punctuation — unlike LESS, which gives the
+  // type colour. What this case locks is the ITALICS: before the fix the
+  // suffix inherited the HTML attribute italics even while coming out in fg1.
+  { file: "sample.scss", line: 4, snippet: "__title", role: "punctuation", italic: false },
+  { file: "sample.scss", line: 5, snippet: "hover", role: "type", italic: false },
 
-  // HTML — aqui o itálico de atributo É desejado
-  { arquivo: "sample.html", linha: 1, trecho: "comentário", role: "comment", italico: true },
-  { arquivo: "sample.html", linha: 2, trecho: "div", role: "tag", italico: false },
-  { arquivo: "sample.html", linha: 2, trecho: "<", role: "punctuation", italico: false },
-  { arquivo: "sample.html", linha: 2, trecho: "class", role: "attribute", italico: true },
-  { arquivo: "sample.html", linha: 2, trecho: "cartao", role: "string", italico: false },
-  { arquivo: "sample.html", linha: 3, trecho: "a href", role: "tag", italico: false },
-  { arquivo: "sample.html", linha: 3, trecho: "href", role: "attribute", italico: true },
+  // HTML — here attribute italics ARE wanted
+  { file: "sample.html", line: 1, snippet: "comment", role: "comment", italic: true },
+  { file: "sample.html", line: 2, snippet: "div", role: "tag", italic: false },
+  { file: "sample.html", line: 2, snippet: "<", role: "punctuation", italic: false },
+  { file: "sample.html", line: 2, snippet: "class", role: "attribute", italic: true },
+  { file: "sample.html", line: 2, snippet: "card", role: "string", italic: false },
+  { file: "sample.html", line: 3, snippet: "a href", role: "tag", italic: false },
+  { file: "sample.html", line: 3, snippet: "href", role: "attribute", italic: true },
 
-  // TSX — o trio tag × atributo × componente do JSX
-  { arquivo: "sample.tsx", linha: 1, trecho: "comentário", role: "comment", italico: true },
-  { arquivo: "sample.tsx", linha: 2, trecho: "import", role: "storage", italico: false },
-  { arquivo: "sample.tsx", linha: 4, trecho: "export", role: "storage", italico: false },
-  { arquivo: "sample.tsx", linha: 4, trecho: "function", role: "storage", italico: false },
-  { arquivo: "sample.tsx", linha: 4, trecho: "Cartao", role: "function", italico: false },
-  { arquivo: "sample.tsx", linha: 5, trecho: "const", role: "storage", italico: false },
-  // const declara variável comum, não constante: fica em fg0
-  { arquivo: "sample.tsx", linha: 5, trecho: "rotulo", role: "variable", italico: false },
-  { arquivo: "sample.tsx", linha: 4, trecho: "props", role: "parameter", italico: true },
-  { arquivo: "sample.tsx", linha: 4, trecho: "CartaoProps", role: "type", italico: false },
-  { arquivo: "sample.tsx", linha: 5, trecho: "Item:", role: "string", italico: false },
-  { arquivo: "sample.tsx", linha: 5, trecho: "${", role: "interpolation", italico: false },
-  { arquivo: "sample.tsx", linha: 6, trecho: "return", role: "keyword", italico: false },
-  { arquivo: "sample.tsx", linha: 7, trecho: "<", role: "punctuation", italico: false },
-  { arquivo: "sample.tsx", linha: 7, trecho: "section", role: "tag", italico: false },
-  { arquivo: "sample.tsx", linha: 7, trecho: "className", role: "attribute", italico: true },
-  { arquivo: "sample.tsx", linha: 8, trecho: "Botao", role: "type", italico: false },
-  { arquivo: "sample.tsx", linha: 8, trecho: "onClick", role: "attribute", italico: true },
+  // TSX — JSX's tag × attribute × component trio
+  { file: "sample.tsx", line: 1, snippet: "comment", role: "comment", italic: true },
+  { file: "sample.tsx", line: 2, snippet: "import", role: "storage", italic: false },
+  { file: "sample.tsx", line: 4, snippet: "export", role: "storage", italic: false },
+  { file: "sample.tsx", line: 4, snippet: "function", role: "storage", italic: false },
+  { file: "sample.tsx", line: 4, snippet: "Card", role: "function", italic: false },
+  { file: "sample.tsx", line: 5, snippet: "const", role: "storage", italic: false },
+  // const declares an ordinary variable, not a constant: stays fg0
+  { file: "sample.tsx", line: 5, snippet: "label", role: "variable", italic: false },
+  { file: "sample.tsx", line: 4, snippet: "props", role: "parameter", italic: true },
+  { file: "sample.tsx", line: 4, snippet: "CardProps", role: "type", italic: false },
+  { file: "sample.tsx", line: 5, snippet: "Item:", role: "string", italic: false },
+  { file: "sample.tsx", line: 5, snippet: "${", role: "interpolation", italic: false },
+  { file: "sample.tsx", line: 6, snippet: "return", role: "keyword", italic: false },
+  { file: "sample.tsx", line: 7, snippet: "<", role: "punctuation", italic: false },
+  { file: "sample.tsx", line: 7, snippet: "section", role: "tag", italic: false },
+  { file: "sample.tsx", line: 7, snippet: "className", role: "attribute", italic: true },
+  { file: "sample.tsx", line: 8, snippet: "Button", role: "type", italic: false },
+  { file: "sample.tsx", line: 8, snippet: "onClick", role: "attribute", italic: true },
 
   // ----------------------------------------------------------
-  // Linguagens de programação. O princípio que estes casos guardam:
-  // scarlet = fluxo de controle; o resto das palavras reservadas
-  // (declaração, modificador, módulo) = cinza de storage; self/this =
-  // cinza itálico; metaprogramação (decorator, anotação, atributo,
-  // macro de C) = orquídea.
+  // Programming languages. The principle these cases guard:
+  // scarlet = control flow; the rest of the reserved words
+  // (declaration, modifier, module) = storage grey; self/this =
+  // grey italic; metaprogramming (decorator, annotation, attribute,
+  // C macro) = orchid.
   // ----------------------------------------------------------
 
   // Rust
-  { arquivo: "sample.rs", linha: 2, trecho: "use", role: "storage", italico: false },
-  { arquivo: "sample.rs", linha: 6, trecho: "#", role: "decorator", italico: false },
-  { arquivo: "sample.rs", linha: 6, trecho: "derive", role: "decorator", italico: false },
-  { arquivo: "sample.rs", linha: 6, trecho: "Debug", role: "type", italico: false },
-  { arquivo: "sample.rs", linha: 7, trecho: "'a", role: "type", italico: true },
-  { arquivo: "sample.rs", linha: 9, trecho: "u32", role: "type", italico: false },
-  { arquivo: "sample.rs", linha: 14, trecho: "MAX_TRACKS", role: "constant", italico: false },
-  { arquivo: "sample.rs", linha: 17, trecho: "fn", role: "storage", italico: false },
-  { arquivo: "sample.rs", linha: 17, trecho: "self", role: "builtin", italico: true },
-  { arquivo: "sample.rs", linha: 18, trecho: "{}", role: "interpolation", italico: false },
-  { arquivo: "sample.rs", linha: 22, trecho: "pub", role: "storage", italico: false },
-  { arquivo: "sample.rs", linha: 24, trecho: "for", role: "keyword", italico: false },
-  { arquivo: "sample.rs", linha: 25, trecho: "break", role: "keyword", italico: false },
-  { arquivo: "sample.rs", linha: 29, trecho: "match", role: "keyword", italico: false },
-  { arquivo: "sample.rs", linha: 35, trecho: "async", role: "storage", italico: false },
-  { arquivo: "sample.rs", linha: 37, trecho: "{label}", role: "interpolation", italico: false },
-  // o ponto de 3.5 é parte do número, não pontuação
-  { arquivo: "sample.rs", linha: 37, trecho: ".5", role: "number", italico: false },
+  { file: "sample.rs", line: 2, snippet: "use", role: "storage", italic: false },
+  { file: "sample.rs", line: 6, snippet: "#", role: "decorator", italic: false },
+  { file: "sample.rs", line: 6, snippet: "derive", role: "decorator", italic: false },
+  { file: "sample.rs", line: 6, snippet: "Debug", role: "type", italic: false },
+  { file: "sample.rs", line: 7, snippet: "'a", role: "type", italic: true },
+  { file: "sample.rs", line: 9, snippet: "u32", role: "type", italic: false },
+  { file: "sample.rs", line: 14, snippet: "MAX_TRACKS", role: "constant", italic: false },
+  { file: "sample.rs", line: 17, snippet: "fn", role: "storage", italic: false },
+  { file: "sample.rs", line: 17, snippet: "self", role: "builtin", italic: true },
+  { file: "sample.rs", line: 18, snippet: "{}", role: "interpolation", italic: false },
+  { file: "sample.rs", line: 22, snippet: "pub", role: "storage", italic: false },
+  { file: "sample.rs", line: 24, snippet: "for", role: "keyword", italic: false },
+  { file: "sample.rs", line: 25, snippet: "break", role: "keyword", italic: false },
+  { file: "sample.rs", line: 29, snippet: "match", role: "keyword", italic: false },
+  { file: "sample.rs", line: 35, snippet: "async", role: "storage", italic: false },
+  { file: "sample.rs", line: 37, snippet: "{label}", role: "interpolation", italic: false },
+  // the dot in 3.5 is part of the number, not punctuation
+  { file: "sample.rs", line: 37, snippet: ".5", role: "number", italic: false },
 
   // Java
-  { arquivo: "Sample.java", linha: 1, trecho: "package", role: "storage", italico: false },
-  { arquivo: "Sample.java", linha: 3, trecho: "import", role: "storage", italico: false },
-  { arquivo: "Sample.java", linha: 8, trecho: "@param", role: "doctag", italico: true },
-  { arquivo: "Sample.java", linha: 8, trecho: "<T>", role: "doctag", italico: true },
-  { arquivo: "Sample.java", linha: 10, trecho: "@FunctionalInterface", role: "decorator", italico: false },
-  { arquivo: "Sample.java", linha: 13, trecho: "public", role: "storage", italico: false },
-  { arquivo: "Sample.java", linha: 13, trecho: "Encore", role: "type", italico: false },
-  { arquivo: "Sample.java", linha: 14, trecho: "int", role: "type", italico: false },
-  { arquivo: "Sample.java", linha: 19, trecho: "this", role: "builtin", italico: true },
-  { arquivo: "Sample.java", linha: 22, trecho: "@Override", role: "decorator", italico: false },
-  { arquivo: "Sample.java", linha: 25, trecho: "throw", role: "keyword", italico: false },
-  { arquivo: "Sample.java", linha: 25, trecho: "new", role: "storage", italico: false },
-  { arquivo: "Sample.java", linha: 32, trecho: "?", role: "operator", italico: false },
+  { file: "Sample.java", line: 1, snippet: "package", role: "storage", italic: false },
+  { file: "Sample.java", line: 3, snippet: "import", role: "storage", italic: false },
+  { file: "Sample.java", line: 8, snippet: "@param", role: "doctag", italic: true },
+  { file: "Sample.java", line: 8, snippet: "<T>", role: "doctag", italic: true },
+  { file: "Sample.java", line: 10, snippet: "@FunctionalInterface", role: "decorator", italic: false },
+  { file: "Sample.java", line: 13, snippet: "public", role: "storage", italic: false },
+  { file: "Sample.java", line: 13, snippet: "Encore", role: "type", italic: false },
+  { file: "Sample.java", line: 14, snippet: "int", role: "type", italic: false },
+  { file: "Sample.java", line: 19, snippet: "this", role: "builtin", italic: true },
+  { file: "Sample.java", line: 22, snippet: "@Override", role: "decorator", italic: false },
+  { file: "Sample.java", line: 25, snippet: "throw", role: "keyword", italic: false },
+  { file: "Sample.java", line: 25, snippet: "new", role: "storage", italic: false },
+  { file: "Sample.java", line: 32, snippet: "?", role: "operator", italic: false },
 
   // C
-  { arquivo: "sample.c", linha: 1, trecho: "include", role: "storage", italico: false },
-  { arquivo: "sample.c", linha: 4, trecho: "MAX_TRACKS", role: "constant", italico: false },
-  { arquivo: "sample.c", linha: 7, trecho: "typedef", role: "storage", italico: false },
-  { arquivo: "sample.c", linha: 8, trecho: "char", role: "type", italico: false },
-  { arquivo: "sample.c", linha: 16, trecho: "for", role: "keyword", italico: false },
-  // compilação condicional é fluxo de controle; #include/#define não
-  { arquivo: "sample.c", linha: 20, trecho: "ifdef", role: "keyword", italico: false },
+  { file: "sample.c", line: 1, snippet: "include", role: "storage", italic: false },
+  { file: "sample.c", line: 4, snippet: "MAX_TRACKS", role: "constant", italic: false },
+  { file: "sample.c", line: 7, snippet: "typedef", role: "storage", italic: false },
+  { file: "sample.c", line: 8, snippet: "char", role: "type", italic: false },
+  { file: "sample.c", line: 16, snippet: "for", role: "keyword", italic: false },
+  // conditional compilation is control flow; #include/#define are not
+  { file: "sample.c", line: 20, snippet: "ifdef", role: "keyword", italic: false },
 
   // C++
-  { arquivo: "sample.cpp", linha: 4, trecho: "namespace", role: "storage", italico: false },
-  { arquivo: "sample.cpp", linha: 7, trecho: "concept", role: "storage", italico: false },
-  { arquivo: "sample.cpp", linha: 7, trecho: "requires", role: "storage", italico: false },
-  { arquivo: "sample.cpp", linha: 11, trecho: "std", role: "namespace", italico: false },
-  { arquivo: "sample.cpp", linha: 12, trecho: "default", role: "storage", italico: false },
-  { arquivo: "sample.cpp", linha: 14, trecho: "nodiscard", role: "decorator", italico: false },
-  { arquivo: "sample.cpp", linha: 14, trecho: "auto", role: "type", italico: false },
-  { arquivo: "sample.cpp", linha: 15, trecho: "return", role: "keyword", italico: false },
+  { file: "sample.cpp", line: 4, snippet: "namespace", role: "storage", italic: false },
+  { file: "sample.cpp", line: 7, snippet: "concept", role: "storage", italic: false },
+  { file: "sample.cpp", line: 7, snippet: "requires", role: "storage", italic: false },
+  { file: "sample.cpp", line: 11, snippet: "std", role: "namespace", italic: false },
+  { file: "sample.cpp", line: 12, snippet: "default", role: "storage", italic: false },
+  { file: "sample.cpp", line: 14, snippet: "nodiscard", role: "decorator", italic: false },
+  { file: "sample.cpp", line: 14, snippet: "auto", role: "type", italic: false },
+  { file: "sample.cpp", line: 15, snippet: "return", role: "keyword", italic: false },
 
-  // C# — o TextMate segue o que o Roslyn faz quando carrega: tudo que não
-  // é palavra de controle (inclusive int, null) é keyword.cs → cinza
-  { arquivo: "Sample.cs", linha: 1, trecho: "using", role: "storage", italico: false },
-  { arquivo: "Sample.cs", linha: 6, trecho: "summary", role: "doctag", italico: true },
-  { arquivo: "Sample.cs", linha: 10, trecho: "int", role: "storage", italico: false },
-  { arquivo: "Sample.cs", linha: 19, trecho: "{Round", role: "interpolation", italico: false },
-  { arquivo: "Sample.cs", linha: 21, trecho: "foreach", role: "keyword", italico: false },
-  { arquivo: "Sample.cs", linha: 21, trecho: "in _setlist", role: "keyword", italico: false },
-  { arquivo: "Sample.cs", linha: 23, trecho: "null", role: "storage", italico: false },
-  { arquivo: "Sample.cs", linha: 24, trecho: "await", role: "keyword", italico: false },
+  // C# — TextMate follows what Roslyn does once it loads: everything that
+  // isn't a control keyword (including int, null) is keyword.cs → grey
+  { file: "Sample.cs", line: 1, snippet: "using", role: "storage", italic: false },
+  { file: "Sample.cs", line: 6, snippet: "summary", role: "doctag", italic: true },
+  { file: "Sample.cs", line: 10, snippet: "int", role: "storage", italic: false },
+  { file: "Sample.cs", line: 19, snippet: "{Round", role: "interpolation", italic: false },
+  { file: "Sample.cs", line: 21, snippet: "foreach", role: "keyword", italic: false },
+  { file: "Sample.cs", line: 21, snippet: "in _setlist", role: "keyword", italic: false },
+  { file: "Sample.cs", line: 23, snippet: "null", role: "storage", italic: false },
+  { file: "Sample.cs", line: 24, snippet: "await", role: "keyword", italic: false },
 
   // Python
-  { arquivo: "sample.py", linha: 2, trecho: "from", role: "storage", italico: false },
-  { arquivo: "sample.py", linha: 8, trecho: "MAX_ENCORES", role: "constant", italico: false },
-  { arquivo: "sample.py", linha: 9, trecho: "?P<title>", role: "variable", italico: false },
-  { arquivo: "sample.py", linha: 12, trecho: "@dataclass", role: "decorator", italico: false },
-  // o MagicPython marca o nome chamado como meta.function-call.generic
-  { arquivo: "sample.py", linha: 16, trecho: "field", role: "function", italico: false },
-  { arquivo: "sample.py", linha: 18, trecho: "def", role: "storage", italico: false },
-  { arquivo: "sample.py", linha: 18, trecho: "self", role: "builtin", italico: true },
-  { arquivo: "sample.py", linha: 19, trecho: "f\"", role: "string", italico: false },
-  { arquivo: "sample.py", linha: 19, trecho: ":.0f", role: "interpolation", italico: false },
-  { arquivo: "sample.py", linha: 24, trecho: "self", role: "builtin", italico: true },
-  { arquivo: "sample.py", linha: 27, trecho: "@property", role: "decorator", italico: false },
-  { arquivo: "sample.py", linha: 38, trecho: "await", role: "keyword", italico: false },
+  { file: "sample.py", line: 2, snippet: "from", role: "storage", italic: false },
+  { file: "sample.py", line: 8, snippet: "MAX_ENCORES", role: "constant", italic: false },
+  { file: "sample.py", line: 9, snippet: "?P<title>", role: "variable", italic: false },
+  { file: "sample.py", line: 12, snippet: "@dataclass", role: "decorator", italic: false },
+  // MagicPython marks the called name as meta.function-call.generic
+  { file: "sample.py", line: 16, snippet: "field", role: "function", italic: false },
+  { file: "sample.py", line: 18, snippet: "def", role: "storage", italic: false },
+  { file: "sample.py", line: 18, snippet: "self", role: "builtin", italic: true },
+  { file: "sample.py", line: 19, snippet: "f\"", role: "string", italic: false },
+  { file: "sample.py", line: 19, snippet: ":.0f", role: "interpolation", italic: false },
+  { file: "sample.py", line: 24, snippet: "self", role: "builtin", italic: true },
+  { file: "sample.py", line: 27, snippet: "@property", role: "decorator", italic: false },
+  { file: "sample.py", line: 38, snippet: "await", role: "keyword", italic: false },
 
   // TypeScript
-  { arquivo: "sample.ts", linha: 1, trecho: "import", role: "storage", italico: false },
-  { arquivo: "sample.ts", linha: 1, trecho: "from", role: "storage", italico: false },
-  { arquivo: "sample.ts", linha: 4, trecho: "MAX_ENCORES", role: "variable", italico: false },
-  { arquivo: "sample.ts", linha: 4, trecho: "as", role: "storage", italico: false },
-  { arquivo: "sample.ts", linha: 10, trecho: "@", role: "decorator", italico: false },
-  { arquivo: "sample.ts", linha: 10, trecho: "sealed", role: "decorator", italico: false },
-  { arquivo: "sample.ts", linha: 20, trecho: "this", role: "builtin", italico: true },
-  { arquivo: "sample.ts", linha: 25, trecho: "hint", role: "doctag", italico: true },
-  { arquivo: "sample.ts", linha: 29, trecho: "await", role: "keyword", italico: false },
-  { arquivo: "sample.ts", linha: 30, trecho: "^", role: "regexp", italico: false },
-  { arquivo: "sample.ts", linha: 30, trecho: "u;", role: "regexp", italico: false },
-  { arquivo: "sample.ts", linha: 35, trecho: "*", role: "storage", italico: false },
+  { file: "sample.ts", line: 1, snippet: "import", role: "storage", italic: false },
+  { file: "sample.ts", line: 1, snippet: "from", role: "storage", italic: false },
+  { file: "sample.ts", line: 4, snippet: "MAX_ENCORES", role: "variable", italic: false },
+  { file: "sample.ts", line: 4, snippet: "as", role: "storage", italic: false },
+  { file: "sample.ts", line: 10, snippet: "@", role: "decorator", italic: false },
+  { file: "sample.ts", line: 10, snippet: "sealed", role: "decorator", italic: false },
+  { file: "sample.ts", line: 20, snippet: "this", role: "builtin", italic: true },
+  { file: "sample.ts", line: 25, snippet: "hint", role: "doctag", italic: true },
+  { file: "sample.ts", line: 29, snippet: "await", role: "keyword", italic: false },
+  { file: "sample.ts", line: 30, snippet: "^", role: "regexp", italic: false },
+  { file: "sample.ts", line: 30, snippet: "u;", role: "regexp", italic: false },
+  { file: "sample.ts", line: 35, snippet: "*", role: "storage", italic: false },
 ];
 
 
 // ------------------------------------------------------------
-// Tokens SEMÂNTICOS. Com o servidor de linguagem ativo, o VS Code pinta
-// por cima do TextMate seguindo esta cadeia (colorThemeData.getTokenStyle):
-//   1. regras de semanticTokenColors do tema — pontuação do seletor:
-//      +100 pelo tipo, +100 por modificador, +10 pela linguagem; empate
-//      vai para a regra definida por ÚLTIMO;
-//   2. propriedade que o tema não definiu (cor, itálico, sublinhado) vem
-//      do semanticTokenScopes da extensão: um escopo TextMate avulso,
-//      resolvido contra as tokenColors do tema SEM ancestrais.
-// Os escopos de fallback abaixo foram copiados do package.json de cada
-// extensão (rust-analyzer, vscode-csharp, vscode-java, vscode-cpptools)
-// ou do registro padrão do VS Code; Pylance não publica o seu, então os
-// casos dele dependem só de regras do tema.
+// SEMANTIC tokens. With a language server running, VS Code paints over
+// TextMate following this chain (colorThemeData.getTokenStyle):
+//   1. the theme's semanticTokenColors rules — selector score:
+//      +100 for the type, +100 per modifier, +10 for the language; ties
+//      go to the rule defined LAST;
+//   2. any property the theme didn't set (colour, italic, underline) comes
+//      from the extension's semanticTokenScopes: a loose TextMate scope,
+//      resolved against the theme's tokenColors WITHOUT ancestors.
+// The fallback scopes below were copied from each extension's package.json
+// (rust-analyzer, vscode-csharp, vscode-java, vscode-cpptools) or from VS
+// Code's default registry; Pylance doesn't publish its own, so its cases
+// depend on theme rules only.
 // ------------------------------------------------------------
-interface CasoSemantico {
-  origem: string;          // servidor + exemplo de código
-  token: string;           // tipo[.modificador]* como o servidor emite
-  linguagem: string;
-  fallback: string[];      // escopos de semanticTokenScopes, em ordem de pontuação
+interface SemanticCase {
+  source: string;          // server + code example
+  token: string;           // type[.modifier]* as the server emits it
+  language: string;
+  fallback: string[];      // semanticTokenScopes scopes, in score order
   role: string;
-  italico: boolean;
-  sublinhado?: boolean;
+  italic: boolean;
+  underline?: boolean;
 }
 
-const casosSemanticos: CasoSemantico[] = [
+const semanticCases: SemanticCase[] = [
   // rust-analyzer
-  { origem: "rust-analyzer: fn, let, pub, use, impl", token: "keyword", linguagem: "rust",
-    fallback: ["keyword.other.rust"], role: "storage", italico: false },
-  { origem: "rust-analyzer: if, for, in, match, return", token: "keyword.controlFlow", linguagem: "rust",
-    fallback: ["keyword.control.rust", "keyword.other.rust"], role: "keyword", italico: false },
-  { origem: "rust-analyzer: self", token: "selfKeyword", linguagem: "rust",
-    fallback: [], role: "builtin", italico: true },
-  { origem: "rust-analyzer: 'a", token: "lifetime", linguagem: "rust",
-    fallback: ["storage.modifier.lifetime.rust"], role: "type", italico: true },
-  { origem: "rust-analyzer: #[derive]", token: "builtinAttribute", linguagem: "rust",
-    fallback: ["meta.attribute.rust"], role: "decorator", italico: false },
-  { origem: "rust-analyzer: println", token: "macro", linguagem: "rust",
-    fallback: ["entity.name.function.preprocessor"], role: "function", italico: false },
-  { origem: "rust-analyzer: {} em format!", token: "formatSpecifier", linguagem: "rust",
-    fallback: ["punctuation.section.embedded.rust"], role: "interpolation", italico: false },
-  { origem: "rust-analyzer: const MAX", token: "const", linguagem: "rust",
-    fallback: [], role: "constant", italico: false },
-  { origem: "rust-analyzer: let mut x", token: "variable.mutable", linguagem: "rust",
-    fallback: ["variable.other.rust", "markup.underline"], role: "variable", italico: false, sublinhado: true },
-  { origem: "rust-analyzer: Some, None", token: "enumMember", linguagem: "rust",
-    fallback: [], role: "constant", italico: false },
+  { source: "rust-analyzer: fn, let, pub, use, impl", token: "keyword", language: "rust",
+    fallback: ["keyword.other.rust"], role: "storage", italic: false },
+  { source: "rust-analyzer: if, for, in, match, return", token: "keyword.controlFlow", language: "rust",
+    fallback: ["keyword.control.rust", "keyword.other.rust"], role: "keyword", italic: false },
+  { source: "rust-analyzer: self", token: "selfKeyword", language: "rust",
+    fallback: [], role: "builtin", italic: true },
+  { source: "rust-analyzer: 'a", token: "lifetime", language: "rust",
+    fallback: ["storage.modifier.lifetime.rust"], role: "type", italic: true },
+  { source: "rust-analyzer: #[derive]", token: "builtinAttribute", language: "rust",
+    fallback: ["meta.attribute.rust"], role: "decorator", italic: false },
+  { source: "rust-analyzer: println", token: "macro", language: "rust",
+    fallback: ["entity.name.function.preprocessor"], role: "function", italic: false },
+  { source: "rust-analyzer: {} in format!", token: "formatSpecifier", language: "rust",
+    fallback: ["punctuation.section.embedded.rust"], role: "interpolation", italic: false },
+  { source: "rust-analyzer: const MAX", token: "const", language: "rust",
+    fallback: [], role: "constant", italic: false },
+  { source: "rust-analyzer: let mut x", token: "variable.mutable", language: "rust",
+    fallback: ["variable.other.rust", "markup.underline"], role: "variable", italic: false, underline: true },
+  { source: "rust-analyzer: Some, None", token: "enumMember", language: "rust",
+    fallback: [], role: "constant", italic: false },
 
   // C# (Roslyn)
-  { origem: "Roslyn: public, int, var, true, null, this", token: "keyword", linguagem: "csharp",
-    fallback: ["keyword.cs"], role: "storage", italico: false },
-  { origem: "Roslyn: if, foreach, in, return, await", token: "controlKeyword", linguagem: "csharp",
-    fallback: ["keyword.control.cs"], role: "keyword", italico: false },
-  { origem: "Roslyn: const MaxEncores", token: "constant", linguagem: "csharp",
-    fallback: ["variable.other.constant"], role: "constant", italico: false },
-  { origem: "Roslyn: <summary>", token: "xmlDocCommentName", linguagem: "csharp",
-    fallback: ["comment.documentation.name.cs"], role: "doctag", italico: true },
-  { origem: "Roslyn: código em #if desligado", token: "excludedCode", linguagem: "csharp",
-    fallback: ["support.other.excluded.cs"], role: "comment", italico: false },
-  { origem: "Roslyn: ^ em Regex", token: "regexAnchor", linguagem: "csharp",
-    fallback: ["keyword.control.anchor.regexp.cs"], role: "regexp", italico: false },
+  { source: "Roslyn: public, int, var, true, null, this", token: "keyword", language: "csharp",
+    fallback: ["keyword.cs"], role: "storage", italic: false },
+  { source: "Roslyn: if, foreach, in, return, await", token: "controlKeyword", language: "csharp",
+    fallback: ["keyword.control.cs"], role: "keyword", italic: false },
+  { source: "Roslyn: const MaxEncores", token: "constant", language: "csharp",
+    fallback: ["variable.other.constant"], role: "constant", italic: false },
+  { source: "Roslyn: <summary>", token: "xmlDocCommentName", language: "csharp",
+    fallback: ["comment.documentation.name.cs"], role: "doctag", italic: true },
+  { source: "Roslyn: code in a disabled #if", token: "excludedCode", language: "csharp",
+    fallback: ["support.other.excluded.cs"], role: "comment", italic: false },
+  { source: "Roslyn: ^ in a Regex", token: "regexAnchor", language: "csharp",
+    fallback: ["keyword.control.anchor.regexp.cs"], role: "regexp", italic: false },
 
   // Java (jdt.ls)
-  { origem: "jdt.ls: @Override", token: "annotation", linguagem: "java",
-    fallback: ["storage.type.annotation.java"], role: "decorator", italico: false },
-  { origem: "jdt.ls: public, static, final", token: "modifier", linguagem: "java",
-    fallback: ["storage.modifier.java"], role: "storage", italico: false },
-  { origem: "jdt.ls: static final MAX", token: "property.static.readonly", linguagem: "java",
-    fallback: ["variable.other.constant.property"], role: "constant", italico: false },
-  { origem: "jdt.ls: final var local", token: "variable.readonly", linguagem: "java",
-    fallback: ["variable.other.constant"], role: "variable", italico: false },
-  { origem: "jdt.ls: @param no Javadoc", token: "keyword.documentation", linguagem: "java",
-    fallback: ["keyword.other.documentation.javadoc.java"], role: "doctag", italico: true },
+  { source: "jdt.ls: @Override", token: "annotation", language: "java",
+    fallback: ["storage.type.annotation.java"], role: "decorator", italic: false },
+  { source: "jdt.ls: public, static, final", token: "modifier", language: "java",
+    fallback: ["storage.modifier.java"], role: "storage", italic: false },
+  { source: "jdt.ls: static final MAX", token: "property.static.readonly", language: "java",
+    fallback: ["variable.other.constant.property"], role: "constant", italic: false },
+  { source: "jdt.ls: final local var", token: "variable.readonly", language: "java",
+    fallback: ["variable.other.constant"], role: "variable", italic: false },
+  { source: "jdt.ls: @param in Javadoc", token: "keyword.documentation", language: "java",
+    fallback: ["keyword.other.documentation.javadoc.java"], role: "doctag", italic: true },
 
-  // C/C++ (cpptools e clangd)
-  { origem: "cpptools/clangd: #define MAX", token: "macro", linguagem: "cpp",
-    fallback: ["entity.name.function.preprocessor.cpp"], role: "constant", italico: false },
-  { origem: "cpptools: struct track", token: "struct", linguagem: "c",
-    fallback: ["storage.type.struct.c"], role: "type", italico: false },
-  { origem: "clangd: const auto x (local)", token: "variable.readonly", linguagem: "cpp",
-    fallback: ["variable.other.constant"], role: "variable", italico: false },
-  { origem: "cpptools: const global", token: "variable.readonly.global", linguagem: "cpp",
-    fallback: ["variable.other.constant.cpp"], role: "constant", italico: false },
-  { origem: "clangd: static constexpr membro", token: "property.static.readonly", linguagem: "cpp",
-    fallback: ["variable.other.constant.property"], role: "constant", italico: false },
-  { origem: "cpptools: std::vector<T>", token: "templateType", linguagem: "cpp",
-    fallback: ["entity.name.type.class.templated.cpp"], role: "type", italico: false },
+  // C/C++ (cpptools and clangd)
+  { source: "cpptools/clangd: #define MAX", token: "macro", language: "cpp",
+    fallback: ["entity.name.function.preprocessor.cpp"], role: "constant", italic: false },
+  { source: "cpptools: struct track", token: "struct", language: "c",
+    fallback: ["storage.type.struct.c"], role: "type", italic: false },
+  { source: "clangd: const auto x (local)", token: "variable.readonly", language: "cpp",
+    fallback: ["variable.other.constant"], role: "variable", italic: false },
+  { source: "cpptools: global const", token: "variable.readonly.global", language: "cpp",
+    fallback: ["variable.other.constant.cpp"], role: "constant", italic: false },
+  { source: "clangd: static constexpr member", token: "property.static.readonly", language: "cpp",
+    fallback: ["variable.other.constant.property"], role: "constant", italic: false },
+  { source: "cpptools: std::vector<T>", token: "templateType", language: "cpp",
+    fallback: ["entity.name.type.class.templated.cpp"], role: "type", italic: false },
 
   // Python (Pylance)
-  { origem: "Pylance: self", token: "selfParameter", linguagem: "python",
-    fallback: [], role: "builtin", italico: true },
-  { origem: "Pylance: cls", token: "clsParameter", linguagem: "python",
-    fallback: [], role: "builtin", italico: true },
-  { origem: "Pylance: import re", token: "module", linguagem: "python",
-    fallback: [], role: "namespace", italico: false },
-  { origem: "Pylance: @dataclass", token: "function.decorator", linguagem: "python",
-    fallback: ["entity.name.function"], role: "decorator", italico: false },
-  { origem: "Pylance: @property", token: "class.decorator", linguagem: "python",
-    fallback: ["entity.name.type.class"], role: "decorator", italico: false },
-  { origem: "Pylance: MAX: Final = 3", token: "variable.readonly", linguagem: "python",
-    fallback: ["variable.other.constant"], role: "constant", italico: false },
+  { source: "Pylance: self", token: "selfParameter", language: "python",
+    fallback: [], role: "builtin", italic: true },
+  { source: "Pylance: cls", token: "clsParameter", language: "python",
+    fallback: [], role: "builtin", italic: true },
+  { source: "Pylance: import re", token: "module", language: "python",
+    fallback: [], role: "namespace", italic: false },
+  { source: "Pylance: @dataclass", token: "function.decorator", language: "python",
+    fallback: ["entity.name.function"], role: "decorator", italic: false },
+  { source: "Pylance: @property", token: "class.decorator", language: "python",
+    fallback: ["entity.name.type.class"], role: "decorator", italic: false },
+  { source: "Pylance: MAX: Final = 3", token: "variable.readonly", language: "python",
+    fallback: ["variable.other.constant"], role: "constant", italic: false },
 
-  // TypeScript (servidor embutido)
-  { origem: "TS: const x = …", token: "variable.readonly", linguagem: "typescript",
-    fallback: ["variable.other.constant"], role: "variable", italico: false },
-  { origem: "TS: static readonly X", token: "property.readonly.static", linguagem: "typescript",
-    fallback: ["variable.other.constant.property"], role: "constant", italico: false },
-  { origem: "TS: console", token: "variable.defaultLibrary", linguagem: "typescript",
-    fallback: ["support.variable"], role: "builtin", italico: true },
-  { origem: "TS: Cue.Start", token: "enumMember", linguagem: "typescript",
-    fallback: ["variable.other.enummember"], role: "constant", italico: false },
+  // TypeScript (built-in server)
+  { source: "TS: const x = …", token: "variable.readonly", language: "typescript",
+    fallback: ["variable.other.constant"], role: "variable", italic: false },
+  { source: "TS: static readonly X", token: "property.readonly.static", language: "typescript",
+    fallback: ["variable.other.constant.property"], role: "constant", italic: false },
+  { source: "TS: console", token: "variable.defaultLibrary", language: "typescript",
+    fallback: ["support.variable"], role: "builtin", italic: true },
+  { source: "TS: Cue.Start", token: "enumMember", language: "typescript",
+    fallback: ["variable.other.enummember"], role: "constant", italic: false },
 ];
 
-type EstiloSemantico = { foreground?: string; italic?: boolean; underline?: boolean };
+type SemanticStyle = { foreground?: string; italic?: boolean; underline?: boolean };
 
-/** Pontuação de um seletor de semanticTokenColors, como o VS Code calcula. */
-function pontua(seletor: string, tipo: string, mods: string[], linguagem: string): number {
-  const [corpo, lang] = seletor.split(":");
-  const [selTipo, ...selMods] = corpo.split(".");
-  let score = 0;
+/** Score of a semanticTokenColors selector, as VS Code computes it. */
+function score(selector: string, type: string, mods: string[], language: string): number {
+  const [body, lang] = selector.split(":");
+  const [selType, ...selMods] = body.split(".");
+  let s = 0;
   if (lang !== undefined) {
-    if (lang !== linguagem) return -1;
-    score += 10;
+    if (lang !== language) return -1;
+    s += 10;
   }
-  if (selTipo !== "*") {
-    if (selTipo !== tipo) return -1;
-    score += 100;
+  if (selType !== "*") {
+    if (selType !== type) return -1;
+    s += 100;
   }
   if (selMods.some((m) => !mods.includes(m))) return -1;
-  return score + selMods.length * 100;
+  return s + selMods.length * 100;
 }
 
-async function resolveSemantico(
-  caso: CasoSemantico,
-  regras: Record<string, string | EstiloSemantico>,
+async function resolveSemantic(
+  c: SemanticCase,
+  rules: Record<string, string | SemanticStyle>,
   registry: vsctm.Registry
-): Promise<{ cor: string; italico: boolean; sublinhado: boolean }> {
-  const [tipo, ...mods] = caso.token.split(".");
-  const melhor: Record<string, { score: number; valor: unknown }> = {};
-  for (const [seletor, valor] of Object.entries(regras)) {
-    const score = pontua(seletor, tipo, mods, caso.linguagem);
-    if (score < 0) continue;
-    const estilo: EstiloSemantico = typeof valor === "string" ? { foreground: valor } : valor;
+): Promise<{ color: string; italic: boolean; underline: boolean }> {
+  const [type, ...mods] = c.token.split(".");
+  const best: Record<string, { score: number; value: unknown }> = {};
+  for (const [selector, value] of Object.entries(rules)) {
+    const sc = score(selector, type, mods, c.language);
+    if (sc < 0) continue;
+    const style: SemanticStyle = typeof value === "string" ? { foreground: value } : value;
     for (const prop of ["foreground", "italic", "underline"] as const) {
-      if (estilo[prop] === undefined) continue;
-      if (!melhor[prop] || melhor[prop].score <= score) melhor[prop] = { score, valor: estilo[prop] };
+      if (style[prop] === undefined) continue;
+      if (!best[prop] || best[prop].score <= sc) best[prop] = { score: sc, value: style[prop] };
     }
   }
-  // Propriedades sem regra no tema: vêm dos escopos de fallback, em ordem.
-  const sondas = caso.fallback.length ? await pintaEscopos(registry, caso.fallback) : [];
-  const cor = (melhor.foreground?.valor as string | undefined) ?? sondas.find(Boolean)?.cor;
-  const italico = (melhor.italic?.valor as boolean | undefined) ?? sondas.some((s) => s?.italico);
-  const sublinhado = (melhor.underline?.valor as boolean | undefined) ?? sondas.some((s) => s?.sublinhado);
-  return { cor: (cor ?? "?").toLowerCase(), italico, sublinhado };
+  // Properties with no theme rule: they come from the fallback scopes, in order.
+  const probes = c.fallback.length ? await paintScopes(registry, c.fallback) : [];
+  const color = (best.foreground?.value as string | undefined) ?? probes.find(Boolean)?.color;
+  const italic = (best.italic?.value as boolean | undefined) ?? probes.some((s) => s?.italic);
+  const underline = (best.underline?.value as boolean | undefined) ?? probes.some((s) => s?.underline);
+  return { color: (color ?? "?").toLowerCase(), italic, underline };
 }
 
 // ------------------------------------------------------------
-// Execução
+// Run
 // ------------------------------------------------------------
-/** Roda todos os casos para uma paleta; devolve o número de falhas. */
-async function rodaPaleta(p: PaletteFile): Promise<number> {
+/** Runs every case for one palette; returns the number of failures. */
+async function runPalette(p: PaletteFile): Promise<number> {
   const c = p.palette;
-  const registry = await criaRegistry();
+  const registry = await createRegistry();
 
-  // O tema entra no registry como o VS Code o entrega: tokenColors precedidos
-  // do default (editor.foreground/background).
-  const tema = generateVscodeTheme(p) as {
+  // The theme enters the registry the way VS Code hands it over: tokenColors
+  // preceded by the default (editor.foreground/background).
+  const theme = generateVscodeTheme(p) as {
     colors: Record<string, string>;
     tokenColors: vsctm.IRawThemeSetting[];
   };
@@ -377,116 +377,116 @@ async function rodaPaleta(p: PaletteFile): Promise<number> {
     settings: [
       {
         settings: {
-          foreground: tema.colors["editor.foreground"],
-          background: tema.colors["editor.background"],
+          foreground: theme.colors["editor.foreground"],
+          background: theme.colors["editor.background"],
         },
       },
-      ...tema.tokenColors,
+      ...theme.tokenColors,
     ],
   });
 
-  // Tokeniza cada fixture uma vez
-  const porArquivo = new Map<string, TokenPintado[][]>();
-  for (const arquivo of new Set(casos.map((k) => k.arquivo))) {
-    const extensao = arquivo.split(".").pop()!;
-    const grammar = await registry.loadGrammar(ESCOPO_POR_EXTENSAO[extensao]);
-    if (!grammar) throw new Error(`gramática não carregou para ${arquivo}`);
-    const linhas = readFileSync(join(raiz, "tests", "fixtures", arquivo), "utf8").split(/\r?\n/);
-    porArquivo.set(arquivo, tokenizaArquivo(registry, grammar, linhas));
+  // Tokenize each fixture once
+  const byFile = new Map<string, PaintedToken[][]>();
+  for (const file of new Set(cases.map((k) => k.file))) {
+    const extension = file.split(".").pop()!;
+    const grammar = await registry.loadGrammar(SCOPE_BY_EXTENSION[extension]);
+    if (!grammar) throw new Error(`grammar failed to load for ${file}`);
+    const lines = readFileSync(join(root, "tests", "fixtures", file), "utf8").split(/\r?\n/);
+    byFile.set(file, tokenizeFile(registry, grammar, lines));
   }
 
-  let falhas = 0;
-  const diagnosticos: string[] = [];
-  const linhasTabela: string[][] = [];
+  let failures = 0;
+  const diagnostics: string[] = [];
+  const tableRows: string[][] = [];
 
-  for (const caso of casos) {
-    const token = c[p.roles.syntax[caso.role]];
-    const esperadoCor = token.toLowerCase();
-    const rotulo = `${p.roles.syntax[caso.role]}/${caso.role}`;
+  for (const k of cases) {
+    const token = c[p.roles.syntax[k.role]];
+    const expectedColor = token.toLowerCase();
+    const label = `${p.roles.syntax[k.role]}/${k.role}`;
 
-    const linhas = readFileSync(join(raiz, "tests", "fixtures", caso.arquivo), "utf8").split(/\r?\n/);
-    const idx = linhas[caso.linha - 1]?.indexOf(caso.trecho) ?? -1;
-    let obtido = "— trecho não encontrado —";
+    const lines = readFileSync(join(root, "tests", "fixtures", k.file), "utf8").split(/\r?\n/);
+    const idx = lines[k.line - 1]?.indexOf(k.snippet) ?? -1;
+    let actual = "— snippet not found —";
     let ok = false;
-    let escopos: string[] = [];
+    let scopes: string[] = [];
 
     if (idx >= 0) {
-      const pintado = porArquivo
-        .get(caso.arquivo)!
-        [caso.linha - 1].find((t) => t.inicio <= idx && idx < t.fim);
-      if (pintado) {
-        obtido = `${pintado.cor}${pintado.italico ? " itálico" : ""}`;
-        ok = pintado.cor === esperadoCor && pintado.italico === caso.italico;
-        escopos = pintado.escopos;
+      const painted = byFile
+        .get(k.file)!
+        [k.line - 1].find((t) => t.start <= idx && idx < t.end);
+      if (painted) {
+        actual = `${painted.color}${painted.italic ? " italic" : ""}`;
+        ok = painted.color === expectedColor && painted.italic === k.italic;
+        scopes = painted.scopes;
       }
     }
     if (!ok) {
-      falhas++;
-      diagnosticos.push(
-        `✘ ${caso.arquivo}:${caso.linha} "${caso.trecho}" — escopos: ${escopos.join(", ") || "?"}`
+      failures++;
+      diagnostics.push(
+        `✘ ${k.file}:${k.line} "${k.snippet}" — scopes: ${scopes.join(", ") || "?"}`
       );
     }
-    linhasTabela.push([
-      `${caso.arquivo}:${caso.linha}`,
-      caso.trecho,
-      `${esperadoCor}${caso.italico ? " itálico" : ""} (${rotulo})`,
-      obtido,
-      ok ? "✔" : "✘ DIVERGE",
+    tableRows.push([
+      `${k.file}:${k.line}`,
+      k.snippet,
+      `${expectedColor}${k.italic ? " italic" : ""} (${label})`,
+      actual,
+      ok ? "✔" : "✘ MISMATCH",
     ]);
   }
 
-  // Camada semântica
-  const regras = (tema as unknown as { semanticTokenColors: Record<string, string | EstiloSemantico> })
+  // Semantic layer
+  const rules = (theme as unknown as { semanticTokenColors: Record<string, string | SemanticStyle> })
     .semanticTokenColors;
-  for (const caso of casosSemanticos) {
-    const esperadoCor = c[p.roles.syntax[caso.role]].toLowerCase();
-    const r = await resolveSemantico(caso, regras, registry);
+  for (const k of semanticCases) {
+    const expectedColor = c[p.roles.syntax[k.role]].toLowerCase();
+    const r = await resolveSemantic(k, rules, registry);
     const ok =
-      r.cor === esperadoCor && r.italico === caso.italico && r.sublinhado === Boolean(caso.sublinhado);
-    const estilo = (cor: string, it: boolean, sub: boolean) =>
-      `${cor}${it ? " itálico" : ""}${sub ? " sublinhado" : ""}`;
+      r.color === expectedColor && r.italic === k.italic && r.underline === Boolean(k.underline);
+    const style = (color: string, it: boolean, und: boolean) =>
+      `${color}${it ? " italic" : ""}${und ? " underline" : ""}`;
     if (!ok) {
-      falhas++;
-      diagnosticos.push(`✘ semântico ${caso.origem} (${caso.token}:${caso.linguagem})`);
+      failures++;
+      diagnostics.push(`✘ semantic ${k.source} (${k.token}:${k.language})`);
     }
-    linhasTabela.push([
-      `sem:${caso.linguagem}`,
-      caso.token,
-      `${estilo(esperadoCor, caso.italico, Boolean(caso.sublinhado))} (${p.roles.syntax[caso.role]}/${caso.role})`,
-      estilo(r.cor, r.italico, r.sublinhado),
-      ok ? "✔" : "✘ DIVERGE",
+    tableRows.push([
+      `sem:${k.language}`,
+      k.token,
+      `${style(expectedColor, k.italic, Boolean(k.underline))} (${p.roles.syntax[k.role]}/${k.role})`,
+      style(r.color, r.italic, r.underline),
+      ok ? "✔" : "✘ MISMATCH",
     ]);
   }
 
-  // Tabela alinhada, no formato do check_contrast
-  const cab = ["onde", "trecho", "esperado", "obtido", "status"];
-  const larguras = cab.map((h, i) => Math.max(h.length, ...linhasTabela.map((l) => l[i].length)));
-  const fmt = (l: string[]) => l.map((cel, i) => cel.padEnd(larguras[i])).join("  ");
-  console.log(`\n[${p.meta.name}] tokenização real contra as gramáticas do VS Code:\n`);
-  console.log(fmt(cab));
-  console.log(larguras.map((w) => "-".repeat(w)).join("  "));
-  for (const l of linhasTabela) console.log(fmt(l));
+  // Aligned table, in check_contrast's format
+  const head = ["where", "snippet", "expected", "actual", "status"];
+  const widths = head.map((h, i) => Math.max(h.length, ...tableRows.map((l) => l[i].length)));
+  const fmt = (l: string[]) => l.map((cell, i) => cell.padEnd(widths[i])).join("  ");
+  console.log(`\n[${p.meta.name}] real tokenization against VS Code's grammars:\n`);
+  console.log(fmt(head));
+  console.log(widths.map((w) => "-".repeat(w)).join("  "));
+  for (const l of tableRows) console.log(fmt(l));
 
-  if (falhas > 0) {
-    console.error(`\n[${p.meta.name}] escopos dos casos que falharam:`);
-    for (const d of diagnosticos) console.error(d);
+  if (failures > 0) {
+    console.error(`\n[${p.meta.name}] scopes of the failing cases:`);
+    for (const d of diagnostics) console.error(d);
   }
-  return falhas;
+  return failures;
 }
 
 async function main(): Promise<void> {
-  const paletas = loadAllPalettes(join(raiz, "palette"));
-  let falhas = 0;
-  for (const { p } of paletas) falhas += await rodaPaleta(p);
+  const palettes = loadAllPalettes(join(root, "palette"));
+  let failures = 0;
+  for (const { p } of palettes) failures += await runPalette(p);
 
-  if (falhas > 0) {
-    console.error(`\n✘ ${falhas} caso(s) de tokenização divergem do esperado.`);
+  if (failures > 0) {
+    console.error(`\n✘ ${failures} tokenization case(s) differ from what was expected.`);
     process.exit(1);
   }
-  console.log(`\n✔ ${casos.length} casos TextMate + ${casosSemanticos.length} semânticos × ${paletas.length} paleta(s) conferem com o tema.`);
+  console.log(`\n✔ ${cases.length} TextMate + ${semanticCases.length} semantic cases × ${palettes.length} palette(s) match the theme.`);
 }
 
-main().catch((erro) => {
-  console.error(erro);
+main().catch((err) => {
+  console.error(err);
   process.exit(1);
 });

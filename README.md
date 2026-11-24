@@ -1,8 +1,8 @@
 # Cadenza
 
-A near-black theme for VS Code, kitty and Hyprland. The structure comes from
-Vercel's Geist: one flat background, three greys for text, hairline borders
-instead of grey panels, white primary buttons. The colour comes from a singer:
+A near-black theme for VS Code, kitty and Hyprland. The structure is flat and
+restrained: one background, three greys for text, hairline borders instead of
+grey panels, white primary buttons. The colour comes from a singer:
 a scarlet jacket, a gold microphone, jade earrings and a lavender-shadowed
 white dress.
 
@@ -32,7 +32,7 @@ grey, so the name being declared is what you read first. `self` and `this` are
 grey italic.
 
 **Cadenza Chandelier** — the black-and-white outfit. The background drops a
-step (close to Vercel's `#0a0a0a`) and bronze replaces scarlet everywhere. The
+step (close to `#0a0a0a`) and bronze replaces scarlet everywhere. The
 only red left is for errors, so errors are the one thing that stands out.
 
 ![Cadenza Chandelier](assets/preview-cadenza-chandelier.png)
@@ -60,7 +60,7 @@ and enum members pick up their colours).
 
 ## Palette
 
-<!-- palette:start — gerado à mão a partir de palette/cadenza.yaml; o check_contrast compara os hex -->
+<!-- palette:start — copied by hand from palette/cadenza.yaml; check_contrast compares the hex values -->
 
 | token | hex | used for |
 |---|---|---|
@@ -79,9 +79,6 @@ and enum members pick up their colours).
 
 <!-- palette:end -->
 
-The scarlet sits at hue 24 in OKLCH. Geist's own red (`#e5484d`) sits at 23:
-the jacket and the design system already agreed.
-
 ## What you get
 
 - **Restrained colour.** Five syntax hues, one accent. Bracket pairs cycle
@@ -97,8 +94,8 @@ the jacket and the design system already agreed.
   between distinct syntax colours; the tightest pair is 7.9. This does not
   cover tritanopia or replace testing with people.
 - **A real terminal palette.** 16 distinct ANSI colours. Bright variants are
-  derived the way Vercel's terminal palette does it: +0.10 lightness in OKLCH,
-  same hue and chroma.
+  derived by raising OKLCH lightness by +0.10, with the same hue and chroma,
+  so every accent brightens by the same perceptual step.
 - **Full workbench coverage.** ~380 UI colours, including merge conflicts,
   IntelliSense icons and the debug console, so no stock blue leaks in.
 - **Checked tokenization.** The build tokenizes sample files with VS Code's own

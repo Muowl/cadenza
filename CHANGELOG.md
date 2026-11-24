@@ -1,87 +1,88 @@
 # Changelog
 
-Todas as mudanças relevantes do Cadenza ficam registradas aqui.
-O projeto segue [Semantic Versioning](https://semver.org/).
+All notable changes to Cadenza are recorded here.
+The project follows [Semantic Versioning](https://semver.org/).
 
 ## [0.2.0] — 2026-11-24
 
-Revisão por linguagem: Rust, TypeScript, Python, Java, C#, C e C++, nas
-gramáticas do VS Code e nos tokens semânticos dos servidores de linguagem.
+Per-language review: Rust, TypeScript, Python, Java, C#, C and C++, in VS
+Code's grammars and in the language servers' semantic tokens.
 
 ### Changed
 
-- **Scarlet só para fluxo de controle.** Imports e módulos (`import`, `export`,
-  `use`, `using`, `package`, `#include`) passam para o cinza das declarações.
-  Motivo: o rust-analyzer e o Roslyn só distinguem fluxo de controle do resto,
-  então com o servidor ativo os imports já ficavam cinza nessas linguagens; agora
-  é igual em todas.
-- `self`, `this` e `cls` em cinza itálico (eram scarlet): aparecem em quase toda
-  linha de Python e Rust e apagavam o sinal do fluxo de controle.
-- Removida a regra semântica `keyword → scarlet`, que pintava de vermelho toda
-  palavra reservada de Rust e C# (`fn`, `let`, `pub`, `public`, `int`, `true`…)
-  quando o servidor de linguagem carregava.
-- `readonly` deixa de significar constante: no TS (toda `const`), no Java
-  (`final`) e no C++ (`const` local) volta a ser variável. Orquídea fica para
-  constantes de verdade: estáticas, globais, de biblioteca, `Final` do Python.
+- **Scarlet for control flow only.** Imports and modules (`import`, `export`,
+  `use`, `using`, `package`, `#include`) move to the declaration grey.
+  Reason: rust-analyzer and Roslyn only tell control flow apart from
+  everything else, so with the server running imports were already grey in
+  those languages; now it's the same everywhere.
+- `self`, `this` and `cls` in grey italic (they were scarlet): they show up on
+  almost every line of Python and Rust and drowned out the control-flow signal.
+- Removed the `keyword → scarlet` semantic rule, which painted every reserved
+  word in Rust and C# red (`fn`, `let`, `pub`, `public`, `int`, `true`…) once
+  the language server loaded.
+- `readonly` no longer means constant: in TS (every `const`), Java (`final`)
+  and C++ (local `const`) it's a variable again. Orchid is kept for real
+  constants: static, global, library, Python's `Final`.
 
 ### Fixed
 
-- C#: `int`, `string`, `double` saíam em scarlet (`keyword.type.cs`); tags XML
-  de `///` saíam em scarlet dentro do comentário; `await` saía cinza.
-- Java: anotações (`@Override`) sem cor; `new` e o `?` do ternário em scarlet;
-  `@param` em scarlet.
-- C/C++: `#include`/`#define`, `typedef`, `concept`, `requires` e `= default` em
-  scarlet; `std::` e `[[nodiscard]]` sem cor. `#if`/`#ifdef` continuam em
-  scarlet (compilação condicional é fluxo de controle).
-- Rust: `fn`, `impl`, `async` em scarlet; `u32`/`usize` cinza em algumas
-  posições; ponto de `3.5` cinza no meio do número; `#[derive]` sem cor;
-  `{}` de formatação sem a cor de interpolação.
-- Python: `f`/`r` de string cinza; `:.0f` cinza; grupo nomeado de regex em
-  scarlet; constantes em CAIXA ALTA sem cor; chamadas `field(...)` sem cor.
-- TypeScript: `@decorator` com o nome sem cor; flag de regex (`/u`) cinza;
-  âncoras de regex (`^`, `$`) em scarlet.
+- C#: `int`, `string`, `double` came out scarlet (`keyword.type.cs`); XML tags
+  in `///` came out scarlet inside the comment; `await` came out grey.
+- Java: annotations (`@Override`) had no colour; `new` and the ternary `?` were
+  scarlet; `@param` was scarlet.
+- C/C++: `#include`/`#define`, `typedef`, `concept`, `requires` and `= default`
+  were scarlet; `std::` and `[[nodiscard]]` had no colour. `#if`/`#ifdef` stay
+  scarlet (conditional compilation is control flow).
+- Rust: `fn`, `impl`, `async` were scarlet; `u32`/`usize` grey in some
+  positions; the dot in `3.5` grey in the middle of the number; `#[derive]` had
+  no colour; formatting `{}` lacked the interpolation colour.
+- Python: the `f`/`r` string prefix was grey; `:.0f` was grey; named regex
+  groups were scarlet; UPPER_CASE constants had no colour; `field(...)` calls
+  had no colour.
+- TypeScript: the name in `@decorator` had no colour; regex flags (`/u`) were
+  grey; regex anchors (`^`, `$`) were scarlet.
 
 ### Added
 
-- Metaprogramação com uma cor (orquídea) em todas as linguagens: decorators,
-  anotações, atributos de Rust e C++, macros de C/C++.
-- Lifetimes do Rust em lilás itálico; variáveis `mut` sublinhadas (o escopo que
-  o rust-analyzer usa para isso agora tem estilo).
-- Tags de documentação (`@param`, `<summary>`, nomes no JSDoc) em `doctag`: um
-  degrau acima do comentário.
-- Regras semânticas para rust-analyzer, Roslyn, jdt.ls, clangd/cpptools e
+- Metaprogramming in one colour (orchid) in every language: decorators,
+  annotations, Rust and C++ attributes, C/C++ macros.
+- Rust lifetimes in lilac italic; `mut` variables underlined (the scope
+  rust-analyzer uses for this now has a style).
+- Documentation tags (`@param`, `<summary>`, JSDoc names) in `doctag`: one
+  step above the comment.
+- Semantic rules for rust-analyzer, Roslyn, jdt.ls, clangd/cpptools and
   Pylance (`selfParameter`, `module`, `*.decorator`, `lifetime`, `macro`…).
-- Gate: 76 casos novos de tokenização nas seis linguagens e 37 casos que
-  simulam a cadeia semântica do VS Code (regras do tema → `semanticTokenScopes`
-  de cada extensão). Gramáticas novas vendorizadas de `microsoft/vscode`.
-- `assets/languages-*.png` (galeria por linguagem) e `npm run inspect`.
+- Gate: 76 new tokenization cases across the six languages and 37 cases that
+  simulate VS Code's semantic chain (theme rules → each extension's
+  `semanticTokenScopes`). New grammars vendored from `microsoft/vscode`.
+- `assets/languages-*.png` (per-language gallery) and `npm run inspect`.
 
 ## [0.1.0] — 2026-11-24
 
-Primeira versão.
+First release.
 
 ### Added
 
-- **Cadenza** (base): fundo quase preto com estrutura plana à la Vercel/Geist —
-  editor e chrome no mesmo fundo, separados por bordas finas; três cinzas de
-  texto; botão primário branco. Cinco matizes de sintaxe tirados da Astra Yao:
-  scarlet (jaqueta), gold (microfone), jade (brincos), lilac (sombra do
-  vestido) e orchid (medalhão). Scarlet restrito a controle de fluxo, tags,
-  cursor, aba ativa e badges; declarações (`const`, `function`, `=>`) no cinza
-  da pontuação.
-- **Cadenza Chandelier** (variante, overlay): fundo um degrau mais escuro e
-  bronze no lugar do scarlet. O único vermelho que sobra é o de erro.
-- Geradores além do VS Code, todos a partir de `palette/`: kitty, Hyprland
-  (`$variáveis`), Waybar (`@define-color`), Base24 e JSON, em `extras/`.
-- ANSI "bright" derivado em OKLCH (+0.10 de L, mesmo matiz e croma), o método
-  da paleta de terminal da Vercel, no lugar da mistura com branco.
-- Ícone: fermata (arco sobre ponto), gerado da palette.
-- `npm run preview`: screenshots do README desenhados com as cores geradas e
-  o código tokenizado pelo motor do VS Code, em Geist Mono.
+- **Cadenza** (base): near-black background with a flat structure — editor
+  and chrome on the same background, separated by hairline borders; three
+  text greys; white primary button. Five syntax hues taken from Astra Yao:
+  scarlet (jacket), gold (microphone), jade (earrings), lilac (the dress's
+  shadow) and orchid (medallion). Scarlet limited to control flow, tags,
+  cursor, active tab and badges; declarations (`const`, `function`, `=>`) in
+  the punctuation grey.
+- **Cadenza Chandelier** (variant, overlay): a background one step darker and
+  bronze instead of scarlet. The only red left is for errors.
+- Generators beyond VS Code, all from `palette/`: kitty, Hyprland
+  (`$variables`), Waybar (`@define-color`), Base24 and JSON, in `extras/`.
+- ANSI "bright" colours derived in OKLCH (+0.10 L, same hue and chroma)
+  instead of mixing with white.
+- Icon: a fermata (arc over a dot), generated from the palette.
+- `npm run preview`: README screenshots drawn with the generated colours and
+  code tokenized by VS Code's engine, in Geist Mono.
 
-### Herdado do Papilio
+### Inherited from Papilio
 
-- Pipeline YAML → geradores, overlays de variante e os três gates do build
-  (contraste WCAG, separação sob daltonismo, tokenização real contra as
-  gramáticas do VS Code). A infra de tokenização foi extraída para
-  `scripts/lib/textmate.ts`, compartilhada entre o gate e o preview.
+- YAML → generators pipeline, variant overlays and the three build gates
+  (WCAG contrast, separation under colour blindness, real tokenization
+  against VS Code's grammars). The tokenization infrastructure was extracted
+  into `scripts/lib/textmate.ts`, shared by the gate and the preview.

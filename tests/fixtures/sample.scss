@@ -1,7 +1,7 @@
-// comentário de linha
+// line comment
 %base { display: block; }
-.cartao {
-  &__titulo { color: blue; }
+.card {
+  &__title { color: blue; }
   &:hover { opacity: 1; }
 }
-.aviso { @extend %base; }
+.notice { @extend %base; }

@@ -1,7 +1,7 @@
 // ============================================================
-// Infra de tokenização compartilhada por check_tokens.ts (gate) e
-// preview.ts (screenshots): o MESMO motor do VS Code (vscode-textmate +
-// vscode-oniguruma) sobre as gramáticas vendorizadas em tests/grammars/.
+// Tokenization infrastructure shared by check_tokens.ts (gate) and
+// preview.ts (screenshots): the SAME engine as VS Code (vscode-textmate +
+// vscode-oniguruma) over the grammars vendored in tests/grammars/.
 // ============================================================
 
 import { join } from "node:path";
@@ -11,9 +11,9 @@ import * as oniguruma from "vscode-oniguruma";
 
 export { vsctm };
 
-const raiz = join(import.meta.dirname, "..", "..");
+const root = join(import.meta.dirname, "..", "..");
 
-export const GRAMATICAS: Record<string, string> = {
+export const GRAMMARS: Record<string, string> = {
   "source.css": "css.tmLanguage.json",
   "source.css.less": "less.tmLanguage.json",
   "source.css.scss": "scss.tmLanguage.json",
@@ -31,7 +31,7 @@ export const GRAMATICAS: Record<string, string> = {
   "source.regexp.python": "MagicRegExp.tmLanguage.json",
 };
 
-export const ESCOPO_POR_EXTENSAO: Record<string, string> = {
+export const SCOPE_BY_EXTENSION: Record<string, string> = {
   css: "source.css",
   less: "source.css.less",
   scss: "source.css.scss",
@@ -46,114 +46,114 @@ export const ESCOPO_POR_EXTENSAO: Record<string, string> = {
   py: "source.python",
 };
 
-// Máscaras de metadata do vscode-textmate (MetadataConsts). O itálico é o
-// bit 1 do fontStyle.
+// vscode-textmate metadata masks (MetadataConsts). Italic is bit 1 of
+// fontStyle.
 const FONT_STYLE_MASK = 0b00000000_00000000_01111000_00000000;
 const FONT_STYLE_OFFSET = 11;
 const FOREGROUND_MASK = 0b00000000_11111111_10000000_00000000;
 const FOREGROUND_OFFSET = 15;
-const ITALICO = 1;
-const SUBLINHADO = 4;
+const ITALIC = 1;
+const UNDERLINE = 4;
 
-// O WASM do oniguruma só pode ser inicializado uma vez por processo — o
-// registry, porém, é um por paleta (setTheme muda o colorMap inteiro).
-let wasmCarregado = false;
+// The oniguruma WASM can only be initialized once per process — the
+// registry, however, is one per palette (setTheme replaces the whole colorMap).
+let wasmLoaded = false;
 
-export async function criaRegistry(): Promise<vsctm.Registry> {
-  if (!wasmCarregado) {
-    const wasm = readFileSync(join(raiz, "node_modules", "vscode-oniguruma", "release", "onig.wasm"));
+export async function createRegistry(): Promise<vsctm.Registry> {
+  if (!wasmLoaded) {
+    const wasm = readFileSync(join(root, "node_modules", "vscode-oniguruma", "release", "onig.wasm"));
     await oniguruma.loadWASM(wasm.buffer.slice(wasm.byteOffset, wasm.byteOffset + wasm.byteLength));
-    wasmCarregado = true;
+    wasmLoaded = true;
   }
   return new vsctm.Registry({
     onigLib: Promise.resolve({
-      createOnigScanner: (padroes) => new oniguruma.OnigScanner(padroes),
+      createOnigScanner: (patterns) => new oniguruma.OnigScanner(patterns),
       createOnigString: (s) => new oniguruma.OnigString(s),
     }),
     loadGrammar: async (scopeName) => {
-      const arquivo = GRAMATICAS[scopeName];
-      if (!arquivo) return null; // linguagens embutidas que não testamos (js em <script> etc.)
-      const caminho = join(raiz, "tests", "grammars", arquivo);
-      return vsctm.parseRawGrammar(readFileSync(caminho, "utf8"), caminho);
+      const file = GRAMMARS[scopeName];
+      if (!file) return null; // embedded languages we don't test (js in <script> etc.)
+      const path = join(root, "tests", "grammars", file);
+      return vsctm.parseRawGrammar(readFileSync(path, "utf8"), path);
     },
   });
 }
 
-export interface TokenPintado {
-  inicio: number;
-  fim: number;
-  cor: string;      // hex minúsculo resolvido pelo tema
-  italico: boolean;
-  escopos: string[]; // para diagnóstico quando o caso falha
+export interface PaintedToken {
+  start: number;
+  end: number;
+  color: string;     // lowercase hex resolved by the theme
+  italic: boolean;
+  scopes: string[];  // for diagnostics when a case fails
 }
 
-/** Tokeniza um fixture inteiro e devolve, por linha, os tokens já pintados. */
-export function tokenizaArquivo(
+/** Tokenizes a whole fixture and returns the painted tokens, per line. */
+export function tokenizeFile(
   registry: vsctm.Registry,
   grammar: vsctm.IGrammar,
-  linhas: string[]
-): TokenPintado[][] {
-  const mapaCores = registry.getColorMap();
-  const resultado: TokenPintado[][] = [];
-  let pilha = vsctm.INITIAL;      // para tokenizeLine2 (metadata: cor/estilo)
-  let pilhaEscopos = vsctm.INITIAL; // para tokenizeLine (escopos legíveis)
-  for (const linha of linhas) {
-    const bin = grammar.tokenizeLine2(linha, pilha);
-    const leg = grammar.tokenizeLine(linha, pilhaEscopos);
-    pilha = bin.ruleStack;
-    pilhaEscopos = leg.ruleStack;
+  lines: string[]
+): PaintedToken[][] {
+  const colorMap = registry.getColorMap();
+  const result: PaintedToken[][] = [];
+  let stack = vsctm.INITIAL;       // for tokenizeLine2 (metadata: colour/style)
+  let scopeStack = vsctm.INITIAL;  // for tokenizeLine (readable scopes)
+  for (const line of lines) {
+    const bin = grammar.tokenizeLine2(line, stack);
+    const readable = grammar.tokenizeLine(line, scopeStack);
+    stack = bin.ruleStack;
+    scopeStack = readable.ruleStack;
 
-    const tokens: TokenPintado[] = [];
-    // tokens binários vêm em pares (startIndex, metadata)
+    const tokens: PaintedToken[] = [];
+    // binary tokens come in pairs (startIndex, metadata)
     for (let i = 0; i < bin.tokens.length; i += 2) {
-      const inicio = bin.tokens[i];
+      const start = bin.tokens[i];
       const metadata = bin.tokens[i + 1];
-      const fim = i + 2 < bin.tokens.length ? bin.tokens[i + 2] : linha.length;
-      const idCor = (metadata & FOREGROUND_MASK) >>> FOREGROUND_OFFSET;
+      const end = i + 2 < bin.tokens.length ? bin.tokens[i + 2] : line.length;
+      const colorId = (metadata & FOREGROUND_MASK) >>> FOREGROUND_OFFSET;
       const fontStyle = (metadata & FONT_STYLE_MASK) >>> FONT_STYLE_OFFSET;
-      const legivel = leg.tokens.find((t) => t.startIndex <= inicio && inicio < t.endIndex);
+      const match = readable.tokens.find((t) => t.startIndex <= start && start < t.endIndex);
       tokens.push({
-        inicio,
-        fim,
-        cor: (mapaCores[idCor] ?? "").toLowerCase(),
-        italico: (fontStyle & ITALICO) !== 0,
-        escopos: legivel?.scopes ?? [],
+        start,
+        end,
+        color: (colorMap[colorId] ?? "").toLowerCase(),
+        italic: (fontStyle & ITALIC) !== 0,
+        scopes: match?.scopes ?? [],
       });
     }
-    resultado.push(tokens);
+    result.push(tokens);
   }
-  return resultado;
+  return result;
 }
 
 /**
- * Resolve escopos SOLTOS contra o tema, sem ancestrais — como o VS Code faz
- * com o escopo de fallback de um token semântico (semanticTokenScopes):
- * monta uma gramática descartável que dá a cada palavra-sonda um escopo.
+ * Resolves LOOSE scopes against the theme, without ancestors — the way VS Code
+ * treats a semantic token's fallback scope (semanticTokenScopes): builds a
+ * throwaway grammar that gives each probe word one scope.
  */
-export async function pintaEscopos(
+export async function paintScopes(
   registry: vsctm.Registry,
-  escopos: string[]
-): Promise<{ cor: string; italico: boolean; sublinhado: boolean }[]> {
-  const sonda = escopos.map((_, i) => `SONDA${i}`);
+  scopes: string[]
+): Promise<{ color: string; italic: boolean; underline: boolean }[]> {
+  const probe = scopes.map((_, i) => `PROBE${i}`);
   const grammar = await registry.addGrammar({
-    scopeName: `source.sonda.${Date.now()}.${Math.random().toString(36).slice(2)}`,
-    patterns: escopos.map((name, i) => ({ match: `\\b${sonda[i]}\\b`, name })),
+    scopeName: `source.probe.${Date.now()}.${Math.random().toString(36).slice(2)}`,
+    patterns: scopes.map((name, i) => ({ match: `\\b${probe[i]}\\b`, name })),
   } as unknown as vsctm.IRawGrammar);
-  const linha = sonda.join(" ");
-  const r = grammar.tokenizeLine2(linha, vsctm.INITIAL);
-  const mapaCores = registry.getColorMap();
-  const resultado: { cor: string; italico: boolean; sublinhado: boolean }[] = [];
+  const line = probe.join(" ");
+  const r = grammar.tokenizeLine2(line, vsctm.INITIAL);
+  const colorMap = registry.getColorMap();
+  const result: { color: string; italic: boolean; underline: boolean }[] = [];
   for (let i = 0; i < r.tokens.length; i += 2) {
-    const inicio = r.tokens[i];
+    const start = r.tokens[i];
     const meta = r.tokens[i + 1];
-    const idx = sonda.findIndex((s) => linha.startsWith(s, inicio));
+    const idx = probe.findIndex((s) => line.startsWith(s, start));
     if (idx < 0) continue;
-    const estilo = (meta & FONT_STYLE_MASK) >>> FONT_STYLE_OFFSET;
-    resultado[idx] = {
-      cor: mapaCores[(meta & FOREGROUND_MASK) >>> FOREGROUND_OFFSET].toLowerCase(),
-      italico: (estilo & ITALICO) !== 0,
-      sublinhado: (estilo & SUBLINHADO) !== 0,
+    const style = (meta & FONT_STYLE_MASK) >>> FONT_STYLE_OFFSET;
+    result[idx] = {
+      color: colorMap[(meta & FOREGROUND_MASK) >>> FOREGROUND_OFFSET].toLowerCase(),
+      italic: (style & ITALIC) !== 0,
+      underline: (style & UNDERLINE) !== 0,
     };
   }
-  return resultado;
+  return result;
 }

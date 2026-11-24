@@ -1,15 +1,19 @@
 # cadenza
 
-Tema de cores inspirado na Astra Yao (Zenless Zone Zero) com a estrutura do
-design da Vercel (Geist). Alvos: VS Code / Open VSX primeiro; kitty, Hyprland,
-Waybar, Base24 e JSON gerados do mesmo arquivo para o desktop do autor.
+Colour theme inspired by Astra Yao (Zenless Zone Zero) with a flat,
+restrained structure. Targets: VS Code / Open VSX first; kitty, Hyprland,
+Waybar, Base24 and JSON generated from the same file for the author's desktop.
 
-Direção acordada: **Vercel na estrutura, Astra no acento** — fundo quase preto,
-interface em três cinzas, cor reservada para a sintaxe e poucos sinais de UI.
+Agreed direction: **restraint in the structure, Astra in the accent** —
+near-black background, UI in three greys, colour reserved for syntax and a
+handful of UI signals.
 
-## Arquitetura — regra central
+The project's language is English: code, comments, script output, docs and
+commit messages.
 
-`palette/cadenza.yaml` é a **única fonte da verdade**:
+## Architecture — the central rule
+
+`palette/cadenza.yaml` is the **single source of truth**:
 
 ```
 palette/*.yaml → src/generate.ts → themes/*.json (VS Code)
@@ -17,87 +21,87 @@ palette/*.yaml → src/generate.ts → themes/*.json (VS Code)
                                  → assets/logo.{svg,png}
 ```
 
-Variantes são OVERLAYS (`palette/cadenza-<slug>.yaml`): `meta:` completo, só os
-tokens de `palette:` e os `roles:` que mudam. O resto vem da base via
-`loadPaletteVariant`. Geradores e validadores iteram por `loadAllPalettes`;
-uma variante nova precisa só do overlay e de uma entrada em
-`package.json → contributes.themes` (o check de contraste cobra isso).
+Variants are OVERLAYS (`palette/cadenza-<slug>.yaml`): a full `meta:`, only the
+`palette:` tokens and `roles:` that change. Everything else comes from the base
+via `loadPaletteVariant`. Generators and validators iterate over
+`loadAllPalettes`; a new variant only needs the overlay and an entry in
+`package.json → contributes.themes` (the contrast check enforces this).
 
-- `anchors`: cores amostradas das artes (referência, não consumidas)
-- `palette`: tokens com hex final, ajustados para tela
-- `roles`: decisões semânticas — `syntax`, `ui` (inclui roles de desktop:
+- `anchors`: colours sampled from the artwork (reference only, not consumed)
+- `palette`: tokens with final hex values, tuned for screens
+- `roles`: semantic decisions — `syntax`, `ui` (includes desktop roles:
   `border-active`, `border-inactive`, `urgent`), `terminal`, `terminal-bright`
 
-**Regras invioláveis:**
-1. Nenhum gerador contém hex hardcoded. Derivar de token (`alpha()`,
-   `lighten()`, `raiseL()`) é permitido.
-2. "Strings agora são douradas" muda em `roles:`, nunca no gerador.
-3. `themes/`, `extras/` e `assets/` são gerados — nunca editar à mão.
-4. Constante compartilhada entre gerador e validador mora em
-   `src/lib/palette.ts` (`ANSI_BRIGHT_L`, `BRACKETS`, `CHAPAS`).
+**Hard rules:**
+1. No generator contains a hardcoded hex. Deriving from a token (`alpha()`,
+   `lighten()`, `raiseL()`) is allowed.
+2. "Strings are gold now" changes in `roles:`, never in the generator.
+3. `themes/`, `extras/` and `assets/` are generated — never edit them by hand.
+4. Constants shared by a generator and a validator live in
+   `src/lib/palette.ts` (`ANSI_BRIGHT_L`, `BRACKETS`, `TINTS`).
 
-## Comandos
+## Commands
 
 ```bash
 npm install
-npm run build     # gates + geração
+npm run build     # gates + generation
 npm run preview   # assets/preview-<slug>.png (README)
 npm run package   # .vsix
-npm run publish:vsce && npm run publish:ovsx   # precisam de VSCE_PAT / OVSX_PAT
+npm run publish:vsce && npm run publish:ovsx   # need VSCE_PAT / OVSX_PAT
 ```
 
-Testar no VS Code: abrir a pasta e F5 (Extension Development Host).
+To test in VS Code: open the folder and press F5 (Extension Development Host).
 
-## Referências e direitos
+## References and rights
 
-Artes oficiais ficam em `references/` (ignorada pelo git e pelo .vsix).
-Projeto fan-made: nenhuma arte oficial no repo, no pacote ou no README; nome,
-ícone e screenshots são originais. A descrição diz "inspired by Astra Yao" e
-"not affiliated with HoYoverse".
+Official artwork lives in `references/` (ignored by git and by the .vsix).
+Fan-made project: no official artwork in the repo, the package or the README;
+the name, icon and screenshots are original. The description says "inspired
+by Astra Yao" and "not affiliated with HoYoverse".
 
 ```bash
 python scripts/extract_colors.py references/*.webp --colors 12
 ```
 
-## Diretrizes de design
+## Design guidelines
 
-- Fundo `bg0` quase preto com croma ≤ .007 no matiz do cabelo (h 222). Lê
-  como neutro. Editor e chrome no mesmo fundo; `bg3` desenha as bordas; só o
-  que flutua (widgets, menus, inputs) sobe para `bg1`.
-- `scarlet` é a assinatura e é escasso: SÓ fluxo de controle (if, for, match,
-  return, throw, await, yield, #if), tags, cursor, aba ativa, badges, foco.
-  Toda outra palavra reservada — declaração, modificador, import/use/using/
-  #include — fica em `fg1` (`storage`). É a fronteira que o rust-analyzer
-  (`keyword.controlFlow`) e o Roslyn (`controlKeyword`) usam; nunca criar
-  regra semântica genérica para `keyword`.
-- `self`/`this`/`cls` (`builtin`) em `fg1` itálico. Metaprogramação
-  (decorator, anotação, atributo Rust/C++, macro de C) em `orchid`.
-- Botão primário é branco (`fg0`), não vermelho. Indicador da activity bar e
-  do painel: `fg0`.
-- `variable.other.constant` em declaração (`const x`) e o semântico
-  `variable.readonly` vão para `variable` — orquídea fica para literais e
-  CONSTANTES.
-- Escada de luminosidade: a ordem de L em OKLCH separa as cores sob
-  daltonismo. Ao mexer num token, preserve matiz e degrau de L, e rode
-  `npx tsx scripts/check_cvd.ts --matriz`.
-- `npm run check` falha o build em três frentes: contraste WCAG (sintaxe,
-  terminal, pares de UI lidos do tema gerado, seleção, chapas compostas),
-  separação sob protanopia/deuteranopia (`check_cvd.ts`, ΔE ≥ 6 e pares
-  nomeados) e tokenização (`check_tokens.ts`: casos TextMate nos fixtures de
-  `tests/fixtures/` + simulação da cadeia semântica do VS Code).
+- Background `bg0` near-black with chroma ≤ .007 at the hair's hue (h 222).
+  Reads as neutral. Editor and chrome share the background; `bg3` draws the
+  borders; only what floats (widgets, menus, inputs) rises to `bg1`.
+- `scarlet` is the signature and is scarce: ONLY control flow (if, for, match,
+  return, throw, await, yield, #if), tags, cursor, active tab, badges, focus.
+  Every other reserved word — declaration, modifier, import/use/using/
+  #include — stays in `fg1` (`storage`). It's the boundary rust-analyzer
+  (`keyword.controlFlow`) and Roslyn (`controlKeyword`) use; never create a
+  generic semantic rule for `keyword`.
+- `self`/`this`/`cls` (`builtin`) in `fg1` italic. Metaprogramming
+  (decorator, annotation, Rust/C++ attribute, C macro) in `orchid`.
+- The primary button is white (`fg0`), not red. Activity bar and panel
+  indicator: `fg0`.
+- `variable.other.constant` in a declaration (`const x`) and the semantic
+  `variable.readonly` go to `variable` — orchid is for literals and
+  CONSTANTS.
+- Lightness ladder: the order of L in OKLCH separates the colours under
+  colour blindness. When changing a token, preserve its hue and L step, and
+  run `npx tsx scripts/check_cvd.ts --matrix`.
+- `npm run check` fails the build on three fronts: WCAG contrast (syntax,
+  terminal, UI pairs read from the generated theme, selection, composited
+  tints), separation under protanopia/deuteranopia (`check_cvd.ts`, ΔE ≥ 6 and
+  named pairs) and tokenization (`check_tokens.ts`: TextMate cases on the
+  fixtures in `tests/fixtures/` + a simulation of VS Code's semantic chain).
 
-## Tokens semânticos
+## Semantic tokens
 
-Com servidor de linguagem ativo, o VS Code aplica primeiro `semanticTokenColors`
-do tema (pontuação: +100 tipo, +100 por modificador, +10 linguagem; empate vai
-para a regra definida por último) e preenche o que faltar com o
-`semanticTokenScopes` da extensão — um escopo TextMate avulso, resolvido SEM
-ancestrais. Consequências práticas:
+With a language server running, VS Code first applies the theme's
+`semanticTokenColors` (score: +100 type, +100 per modifier, +10 language; ties
+go to the rule defined last) and fills whatever is missing from the
+extension's `semanticTokenScopes` — a loose TextMate scope, resolved WITHOUT
+ancestors. Practical consequences:
 
-- regra TextMate com seletor de ancestral (`comment keyword`) não vale para
-  fallback semântico; o escopo avulso precisa de regra própria
-  (ex.: `keyword.other.documentation`);
-- para descobrir o escopo de fallback, ler `contributes.semanticTokenScopes` no
-  package.json da extensão (rust-analyzer, vscode-csharp, vscode-java,
-  vscode-cpptools) e registrar o caso em `casosSemanticos`;
-- `npm run inspect -- <fixture>` mostra a cor de cada token pelo nome.
+- a TextMate rule with an ancestor selector (`comment keyword`) doesn't apply
+  to the semantic fallback; the loose scope needs its own rule
+  (e.g. `keyword.other.documentation`);
+- to find the fallback scope, read `contributes.semanticTokenScopes` in the
+  extension's package.json (rust-analyzer, vscode-csharp, vscode-java,
+  vscode-cpptools) and register the case in `semanticCases`;
+- `npm run inspect -- <fixture>` shows each token's colour by name.

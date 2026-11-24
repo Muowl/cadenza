@@ -1,19 +1,17 @@
 # ============================================================
-# FONTE DA VERDADE do tema Cadenza.
-# Todos os geradores (VS Code, Base24, kitty, Hyprland, Waybar…)
-# leem SÓ este arquivo (e os overlays de variante ao lado dele).
-# Nenhum gerador pode conter hex hardcoded.
+# SOURCE OF TRUTH for the Cadenza theme.
+# Every generator (VS Code, Base24, kitty, Hyprland, Waybar…)
+# reads ONLY this file (and the variant overlays next to it).
+# No generator may contain a hardcoded hex.
 #
-# Direção: estrutura da Vercel (Geist), cor da Astra Yao.
-#   - Fundo quase preto, interface em três cinzas (texto principal,
-#     secundário, discreto) — a hierarquia da paleta de terminal da Vercel.
-#   - Cor fica reservada para a sintaxe e para poucos sinais de UI.
-#   - O vermelho da jaqueta é a assinatura. Coincidência útil: o matiz
-#     dele (h 24 em OKLCH) é praticamente o mesmo do vermelho da Geist
-#     (#e5484d, h 23) — a ponte entre as duas referências já existia.
+# Direction: flat, restrained structure; Astra Yao's colours.
+#   - Near-black background, UI in three greys (primary, secondary,
+#     subdued text).
+#   - Colour is reserved for syntax and a handful of UI signals.
+#   - The jacket's red is the signature. Its hue sits at h 24 in OKLCH.
 #
-# Valores pensados em OKLCH (L = luminosidade, C = croma, h = matiz).
-# Os comentários registram o L·C·h de cada token para ajustes futuros.
+# Values are designed in OKLCH (L = lightness, C = chroma, h = hue).
+# Comments record each token's L·C·h for future adjustments.
 # ============================================================
 
 meta:
@@ -21,144 +19,143 @@ meta:
   slug: "cadenza"
   variant: "dark"
   author: "muowl"
-  description: "Tema escuro quase preto: estrutura da Vercel, cores da Astra Yao (Zenless Zone Zero)."
+  description: "Near-black dark theme in the colours of Astra Yao (Zenless Zone Zero)."
 
 # ------------------------------------------------------------
-# ÂNCORAS: cores brutas da personagem, amostradas das artes oficiais
-# (references/, fora do git). NÃO são consumidas pelos geradores.
-# Medianas por região; L·C·h em OKLCH.
+# ANCHORS: raw character colours, sampled from the official artwork
+# (references/, outside git). NOT consumed by the generators.
+# Per-region medians; L·C·h in OKLCH.
 # ------------------------------------------------------------
 anchors:
-  jacket: "#b3232c"       # jaqueta vermelha, luz média      L .50 C .18 h 24
-  jacket-shadow: "#711b21" # jaqueta na sombra                L .37 C .12 h 22
-  hair-ink: "#101e23"     # cabelo, quase preto azul-petróleo L .23 C .02 h 222
-  hair-light: "#92bbb9"   # reflexo do cabelo no pôster       L .76 C .04 h 193
-  earring: "#8ecdc3"      # brincos de jade                   L .80 C .07 h 184
-  mic-gold: "#bfa15d"     # dourado do microfone              L .72 C .09 h 86
-  mic-gold-light: "#f4df90" # brilho do dourado               L .90 C .10 h 95
-  dress-shade: "#9099b2"  # sombra lavanda do vestido branco  L .68 C .04 h 270
-  pearl: "#f3f5f8"        # pérolas do colar                  L .97 C .01 h 258
-  medallion: "#b65d94"    # centro magenta do medalhão        L .60 C .13 h 344
-  medallion-ring: "#bac785" # anel verde-limão do medalhão    L .80 C .09 h 118
-  disc: "#a576c3"         # CD violeta preso ao microfone     L .64 C .12 h 311
-  disc-rim: "#3b56c6"     # borda azul do CD                  L .50 C .18 h 269
+  jacket: "#b3232c"       # red jacket, mid light             L .50 C .18 h 24
+  jacket-shadow: "#711b21" # jacket in shadow                 L .37 C .12 h 22
+  hair-ink: "#101e23"     # hair, petrol-blue near-black      L .23 C .02 h 222
+  hair-light: "#92bbb9"   # hair highlight on the poster      L .76 C .04 h 193
+  earring: "#8ecdc3"      # jade earrings                     L .80 C .07 h 184
+  mic-gold: "#bfa15d"     # microphone gold                   L .72 C .09 h 86
+  mic-gold-light: "#f4df90" # gold highlight                  L .90 C .10 h 95
+  dress-shade: "#9099b2"  # lavender shadow on the white dress L .68 C .04 h 270
+  pearl: "#f3f5f8"        # necklace pearls                   L .97 C .01 h 258
+  medallion: "#b65d94"    # magenta medallion centre          L .60 C .13 h 344
+  medallion-ring: "#bac785" # lime-green medallion ring       L .80 C .09 h 118
+  disc: "#a576c3"         # violet CD clipped to the mic      L .64 C .12 h 311
+  disc-rim: "#3b56c6"     # blue CD rim                       L .50 C .18 h 269
 
 # ------------------------------------------------------------
-# PALETA: tokens nomeados que os geradores enxergam.
+# PALETTE: named tokens the generators can see.
 # ------------------------------------------------------------
 palette:
-  # Fundos — quase preto com um sussurro do matiz do cabelo (h 222, C ≤ .007).
-  # Lê como neutro; o croma só impede o cinza "morto" de puxar para o verde.
-  # Estrutura plana à la Vercel: editor e chrome no MESMO fundo, separados
-  # por bordas finas (bg3), não por chapas de cinza.
-  bg0: "#0d0f10"        # L .167 — editor, sidebar, abas, status bar, painel
-  bg1: "#131517"        # L .194 — widgets flutuantes (autocomplete, hover, menus)
-  bg2: "#1b1f20"        # L .236 — hover, item ativo em listas, inputs
-  bg3: "#2a2f30"        # L .301 — bordas, separadores, guias de indentação
-  selection: "#0c2b34"  # L .271 C .040 h 220 — seleção azul-petróleo do cabelo.
-                        # Comentário mantém 4.09:1 por cima; sintaxe preservada.
+  # Backgrounds — near-black with a whisper of the hair's hue (h 222, C ≤ .007).
+  # Reads as neutral; the chroma only keeps a "dead" grey from drifting green.
+  # Flat structure: editor and chrome share the SAME background, separated
+  # by hairline borders (bg3), not by grey panels.
+  bg0: "#0d0f10"        # L .167 — editor, sidebar, tabs, status bar, panel
+  bg1: "#131517"        # L .194 — floating widgets (autocomplete, hover, menus)
+  bg2: "#1b1f20"        # L .236 — hover, active list item, inputs
+  bg3: "#2a2f30"        # L .301 — borders, separators, indent guides
+  selection: "#0c2b34"  # L .271 C .040 h 220 — the hair's petrol-blue selection.
+                        # Comments keep 4.09:1 on top; syntax preserved.
 
-  # ESCADA DE LUMINOSIDADE — a ordem de L é o que separa as cores para quem
-  # tem daltonismo vermelho-verde (o eixo a* some, sobram L e b*).
-  # Medida pelo check_cvd: o par mais apertado da sintaxe fica em ΔE 7.9.
-  # Ao mexer, preserve o matiz e confira o degrau de L.
+  # LIGHTNESS LADDER — the order of L is what separates colours for people
+  # with red-green colour blindness (the a* axis collapses; L and b* remain).
+  # Measured by check_cvd: the tightest syntax pair sits at ΔE 7.9.
+  # When changing a token, preserve its hue and check the L step.
 
-  # Texto — os três cinzas da Vercel (#ededed / #a0a0a0 / #8f8f8f), com
-  # mais distância entre secundário e discreto para comentário não virar
-  # pontuação.
-  fg0: "#e8eced"        # L .940 — texto principal, variáveis, propriedades
-  fg1: "#a7acad"        # L .741 — texto secundário, operadores, pontuação
-  muted: "#81878a"      # L .619 — comentários, números de linha. Subiu de
-                        # L .56 para .62: sob protanopia o scarlet escurece
-                        # para L ~.56 e colava no comentário (ΔE 5.7).
+  # Text — three greys, with more distance between secondary and subdued so
+  # comments don't turn into punctuation.
+  fg0: "#e8eced"        # L .940 — primary text, variables, properties
+  fg1: "#a7acad"        # L .741 — secondary text, operators, punctuation
+  muted: "#81878a"      # L .619 — comments, line numbers. Raised from
+                        # L .56 to .62: under protanopia scarlet darkens
+                        # to L ~.56 and merged with comments (ΔE 5.7).
 
-  # Cores de identidade — cinco matizes, todos da arte
-  scarlet: "#f05252"    # L .655 C .194 h 24 — jaqueta. A assinatura:
-                        # fluxo de controle, tags, cursor, aba ativa. Usar pouco.
-  orchid: "#c775c9"     # L .681 C .149 h 326 — medalhão/CD. Números,
-                        # constantes, decorators. Saiu do rosa (h 352) para
-                        # o orquídea: sob deuteranopia o rosa virava o cinza
-                        # da pontuação (ΔE 2.0).
-  lilac: "#a5b5eb"      # L .780 C .079 h 272 — sombra lavanda do vestido.
-                        # Tipos, classes, componentes, namespaces.
-  jade: "#8bdacf"       # L .834 C .080 h 184 — brincos e reflexo do cabelo.
-                        # Funções e atributos (atributo leva itálico).
-  gold: "#eecf84"       # L .864 C .100 h 88 — microfone. Strings.
+  # Identity colours — five hues, all from the artwork
+  scarlet: "#f05252"    # L .655 C .194 h 24 — jacket. The signature:
+                        # control flow, tags, cursor, active tab. Use sparingly.
+  orchid: "#c775c9"     # L .681 C .149 h 326 — medallion/CD. Numbers,
+                        # constants, decorators. Moved from pink (h 352) to
+                        # orchid: under deuteranopia the pink became the
+                        # punctuation grey (ΔE 2.0).
+  lilac: "#a5b5eb"      # L .780 C .079 h 272 — the dress's lavender shadow.
+                        # Types, classes, components, namespaces.
+  jade: "#8bdacf"       # L .834 C .080 h 184 — earrings and hair highlight.
+                        # Functions and attributes (attributes are italic).
+  gold: "#eecf84"       # L .864 C .100 h 88 — microphone. Strings.
 
-  # Estados (diagnósticos, git, diffs). Colidem com alguns tokens de
-  # sintaxe sob daltonismo, e isso é aceito: sempre aparecem com fundo
-  # tingido, sublinhado ou marcador de gutter reforçando.
-  error: "#f76e52"      # L .700 C .174 h 33 — vermelho mais coral que o
-                        # scarlet, para erro não ser confundido com keyword
-  warning: "#fab048"    # L .810 C .145 h 72 — âmbar, mais laranja que o gold
-  info: "#80a7f0"       # L .729 C .115 h 262 — azul da borda do CD
-  success: "#a4ce6c"    # L .799 C .135 h 128 — anel verde-limão do medalhão
+  # States (diagnostics, git, diffs). They collide with some syntax tokens
+  # under colour blindness, and that is accepted: they always come with a
+  # tinted background, underline or gutter marker as reinforcement.
+  error: "#f76e52"      # L .700 C .174 h 33 — a more coral red than
+                        # scarlet, so errors aren't mistaken for keywords
+  warning: "#fab048"    # L .810 C .145 h 72 — amber, more orange than gold
+  info: "#80a7f0"       # L .729 C .115 h 262 — the CD rim's blue
+  success: "#a4ce6c"    # L .799 C .135 h 128 — the medallion's lime-green ring
 
 # ------------------------------------------------------------
-# ROLES: mapeamento semântico. Valores referenciam nomes da paleta.
-# É AQUI que se decide "keyword é scarlet", não no gerador.
+# ROLES: semantic mapping. Values reference palette names.
+# THIS is where "keyword is scarlet" is decided, not in the generator.
 # ------------------------------------------------------------
 roles:
   syntax:
-    # Vermelho só para CONTROLE DE FLUXO: if, else, for, while, match,
-    # switch, return, break, continue, throw, try/catch, await, yield.
-    # Todo o resto que é palavra reservada — declarações (const, fn, def,
-    # class, interface, =>), modificadores (pub, public, static, async) e
-    # módulos (import, export, use, using, package, #include) — fica no
-    # cinza da pontuação: o nome declarado é o que importa ler.
+    # Red only for CONTROL FLOW: if, else, for, while, match, switch,
+    # return, break, continue, throw, try/catch, await, yield.
+    # Every other reserved word — declarations (const, fn, def, class,
+    # interface, =>), modifiers (pub, public, static, async) and modules
+    # (import, export, use, using, package, #include) — stays in the
+    # punctuation grey: the declared name is what you need to read.
     #
-    # A fronteira é a mesma que os servidores de linguagem usam: o
-    # rust-analyzer marca `keyword.controlFlow` e o Roslyn (C#) separa
-    # `controlKeyword` de `keyword`. Com o servidor ativo, só essa divisão
-    # sobrevive — por isso imports também ficam cinza, em todas as
-    # linguagens, em vez de vermelhos em umas e cinza em outras.
+    # The boundary is the one language servers use: rust-analyzer marks
+    # `keyword.controlFlow` and Roslyn (C#) separates `controlKeyword` from
+    # `keyword`. With the server running, only that split survives — so
+    # imports are grey too, in every language, instead of red in some and
+    # grey in others.
     keyword: scarlet
     storage: fg1
     string: gold
     function: jade
     number: orchid
-    constant: orchid      # true, null, CONSTANTES
-    type: lilac           # classes, interfaces, componentes JSX
+    constant: orchid      # true, null, CONSTANTS
+    type: lilac           # classes, interfaces, JSX components
     variable: fg0
     property: fg0
-    parameter: fg0        # itálico distingue de variável
+    parameter: fg0        # italics set it apart from variables
     comment: muted
     operator: fg1
     punctuation: fg1
-    tag: scarlet          # tags HTML/JSX: mesma família da keyword
-    attribute: jade       # atributos HTML/JSX, em itálico. Jade e não lilac:
-                          # <Botao onClick=…> põe tipo e atributo lado a lado
+    tag: scarlet          # HTML/JSX tags: same family as keywords
+    attribute: jade       # HTML/JSX attributes, italic. Jade rather than lilac:
+                          # <Button onClick=…> puts type and attribute side by side
     regexp: orchid
-    escape: orchid        # \n, \t dentro de strings douradas
-    builtin: fg1          # this, self, cls, super — em itálico. Aparece em
-                          # quase toda linha de Python e Rust: vermelho ali
-                          # apagava o sinal do fluxo de controle.
+    escape: orchid        # \n, \t inside gold strings
+    builtin: fg1          # this, self, cls, super — italic. Shows up on almost
+                          # every line of Python and Rust: red there drowned
+                          # out the control-flow signal.
     namespace: lilac
     decorator: orchid
-    interpolation: orchid # as marcas ${ } dentro de template strings
+    interpolation: orchid # the ${ } marks inside template strings
     inserted: success
     deleted: error
     changed: warning
     quote: muted
-    doctag: fg1           # @param, <summary>, nomes no JSDoc: um degrau acima
-                          # do comentário, em itálico
+    doctag: fg1           # @param, <summary>, JSDoc names: one step above
+                          # the comment, italic
 
   ui:
-    accent: scarlet       # cursor, aba ativa, badges, foco, progresso
+    accent: scarlet       # cursor, active tab, badges, focus, progress
     cursor: scarlet
     link: info
-    # Caracteres casados no quick open / autocomplete. Jade passa folgado
-    # em todos os fundos de lista e deixa o vermelho escasso.
+    # Matched characters in quick open / autocomplete. Jade clears every
+    # list background comfortably and keeps red scarce.
     list-highlight: jade
     terminal-bg: bg0
-    # Desktop (Hyprland, Waybar): borda da janela ativa e alerta.
+    # Desktop (Hyprland, Waybar): active window border and alerts.
     border-active: scarlet
     border-inactive: bg3
     urgent: error
 
-  # Os 16 slots ANSI. Só as 8 bases são decididas aqui: o gerador deriva
-  # cada "bright" subindo +0.10 de L em OKLCH com o mesmo matiz e croma —
-  # o método da paleta de terminal da Vercel (ver ANSI_BRIGHT_L).
+  # The 16 ANSI slots. Only the 8 bases are decided here: the generator
+  # derives each "bright" by raising L by +0.10 in OKLCH with the same hue
+  # and chroma (see ANSI_BRIGHT_L).
   terminal:
     black: bg3
     red: scarlet
@@ -169,7 +166,7 @@ roles:
     cyan: jade
     white: fg1
 
-  # bright-black não é chapa: é o cinza que CLIs usam para texto esmaecido
-  # (dicas do git, sugestões do fish/zsh). Aponta para o muted.
+  # bright-black is not a panel colour: it's the grey CLIs use for dimmed
+  # text (git hints, fish/zsh suggestions). Points at muted.
   terminal-bright:
     black: muted

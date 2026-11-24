@@ -1,11 +1,11 @@
-# Gramáticas vendorizadas
+# Vendored grammars
 
-Cópias das gramáticas TextMate que o VS Code publica, usadas por
-`scripts/check_tokens.ts` para tokenizar os fixtures com o mesmo motor do
-editor. **Não editar à mão** — para atualizar, baixe de novo do repositório
-`microsoft/vscode` (branch `main`):
+Copies of the TextMate grammars VS Code ships, used by
+`scripts/check_tokens.ts` to tokenize the fixtures with the editor's own
+engine. **Do not edit by hand** — to update, download them again from the
+`microsoft/vscode` repository (branch `main`):
 
-| arquivo | origem |
+| file | source |
 | --- | --- |
 | `css.tmLanguage.json` | `extensions/css/syntaxes/` |
 | `less.tmLanguage.json` | `extensions/less/syntaxes/` |
@@ -18,17 +18,17 @@ editor. **Não editar à mão** — para atualizar, baixe de novo do repositóri
 | `java.tmLanguage.json` | `extensions/java/syntaxes/` |
 | `c.tmLanguage.json` | `extensions/cpp/syntaxes/` |
 | `cpp.tmLanguage.json` | `extensions/cpp/syntaxes/` |
-| `cpp.embedded.macro.tmLanguage.json` | `extensions/cpp/syntaxes/` (incluída pelo C++) |
+| `cpp.embedded.macro.tmLanguage.json` | `extensions/cpp/syntaxes/` (included by C++) |
 | `csharp.tmLanguage.json` | `extensions/csharp/syntaxes/` |
 | `MagicPython.tmLanguage.json` | `extensions/python/syntaxes/` |
-| `MagicRegExp.tmLanguage.json` | `extensions/python/syntaxes/` (regex do Python e raw strings do C++) |
+| `MagicRegExp.tmLanguage.json` | `extensions/python/syntaxes/` (Python regex and C++ raw strings) |
 
-As gramáticas de linguagens de programação vieram do commit `679e1ca` de
-`microsoft/vscode` (24/11/2026).
+The programming-language grammars came from commit `679e1ca` of
+`microsoft/vscode` (2026-11-24).
 
-Licença: MIT (VS Code); cada gramática mantém a licença do projeto upstream
-de onde o VS Code a importa. Uso aqui é somente para teste.
+License: MIT (VS Code); each grammar keeps the license of the upstream
+project VS Code imports it from. Used here for testing only.
 
-Atualizar as gramáticas pode mudar nomes de escopo — se `npm run check`
-quebrar depois de uma atualização, os escopos reais de cada caso aparecem
-no diagnóstico da falha.
+Updating the grammars can change scope names — if `npm run check` breaks
+after an update, the real scopes of each case show up in the failure
+diagnostics.

@@ -1,9 +1,9 @@
-import { PaletteFile, resolve, alpha, ansiBright, chapa, BRACKETS } from "../lib/palette";
+import { PaletteFile, resolve, alpha, ansiBright, tint, BRACKETS } from "../lib/palette";
 
 /**
- * Gera o JSON de tema do VSCode a partir da fonte da verdade.
- * Regra do projeto: NENHUM hex hardcoded aqui — tudo vem de p.palette
- * ou de resolve()/alpha()/ansiBright().
+ * Generates the VS Code theme JSON from the source of truth.
+ * Project rule: NO hardcoded hex here — everything comes from p.palette
+ * or from resolve()/alpha()/ansiBright().
  */
 export function generateVscodeTheme(p: PaletteFile): object {
   const c = p.palette;
@@ -11,9 +11,9 @@ export function generateVscodeTheme(p: PaletteFile): object {
   const ui = (role: string) => resolve(p, "ui", role);
   const ansi = (slot: string) => resolve(p, "terminal", slot);
   const bright = (slot: string) => ansiBright(p, slot);
-  // Chapas desenhadas atrás do texto: alpha definido em lib/palette.ts, onde
-  // o validador lê o mesmo valor para medir o contraste sobre a cor composta.
-  const ch = (nome: string) => chapa(p, nome);
+  // Tints drawn behind text: alpha defined in lib/palette.ts, where the
+  // validator reads the same value to measure contrast on the composite colour.
+  const ch = (name: string) => tint(p, name);
 
   return {
     $schema: "vscode://schemas/color-theme",
@@ -29,23 +29,23 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "editor.selectionBackground": c.selection,
       "editor.selectionHighlightBackground": alpha(c.selection, 0.6),
       "editor.wordHighlightBackground": alpha(c.bg3, 0.7),
-      // O preenchimento sozinho precisava de alpha alto para o match saltar, e
-      // era isso que apagava o texto por baixo. A borda devolve a visibilidade
-      // sem chapar o código — o realce passa a ser contorno, não mancha.
+      // The fill alone needed a high alpha for the match to pop, and that is
+      // what washed out the text underneath. The border restores visibility
+      // without flooding the code — the highlight becomes an outline, not a blot.
       "editor.findMatchBackground": ch("find match"),
       "editor.findMatchBorder": c.gold,
-      "editor.findMatchHighlightBackground": ch("find match (outros)"),
+      "editor.findMatchHighlightBackground": ch("find match (others)"),
       "editor.findMatchHighlightBorder": alpha(c.gold, 0.5),
       "editor.lineHighlightBackground": alpha(c.bg2, 0.5),
-      // O default desenha uma borda #282828 por cima do realce quente da linha
-      // atual. Transparente para não sobrar contorno cinza.
+      // The default draws a #282828 border over the current-line highlight.
+      // Transparent so no grey outline is left over.
       "editor.lineHighlightBorder": alpha(c.bg2, 0),
       "editor.rangeHighlightBackground": alpha(c.bg2, 0.6),
       "editor.hoverHighlightBackground": alpha(c.jade, 0.12),
       "editorLineNumber.foreground": c.muted,
       "editorLineNumber.activeForeground": c.fg1,
-      // CodeLens e inlay hints: texto de apoio no editor — sem isto o VS Code
-      // cai no azul/cinza frio do default e fura a tela quente.
+      // CodeLens and inlay hints: supporting text in the editor — without this
+      // VS Code falls back to the default cold blue/grey.
       "editorCodeLens.foreground": c.muted,
       "editorInlayHint.foreground": c.fg1,
       "editorInlayHint.background": alpha(c.bg2, 0.7),
@@ -58,15 +58,16 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "editorWhitespace.foreground": c.bg3,
       "editorBracketMatch.background": alpha(c.jade, 0.15),
       "editorBracketMatch.border": alpha(c.jade, 0.6),
-      // Sticky scroll no fundo do editor, fechado por uma borda: plano, como
-      // o resto da estrutura. A sombra default (preta) some no quase preto.
+      // Sticky scroll on the editor background, closed off by a border: flat,
+      // like the rest of the structure. The default (black) shadow disappears
+      // on near-black.
       "editorStickyScroll.background": c.bg0,
       "editorStickyScrollHover.background": c.bg1,
       "editorStickyScroll.border": c.bg3,
       "editorStickyScroll.shadow": alpha(c.bg0, 0),
       "editorLink.activeForeground": ui("link"),
 
-      // Minimap e overview ruler
+      // Minimap and overview ruler
       "minimap.findMatchHighlight": alpha(c.gold, 0.5),
       "minimap.selectionHighlight": c.selection,
       "minimapSlider.background": alpha(c.bg3, 0.4),
@@ -81,11 +82,11 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "editorOverviewRuler.modifiedForeground": c.warning,
       "editorOverviewRuler.deletedForeground": c.error,
 
-      // Bracket pair colorization. A sequência vive em BRACKETS
-      // (src/lib/palette.ts) porque o check de daltonismo mede o mesmo
-      // conjunto: brackets não têm segundo canal além da cor. O histórico
-      // (crimson colidindo com error, gold com ember, foreground6
-      // transparente) está documentado lá e no CHANGELOG.
+      // Bracket pair colorization. The sequence lives in BRACKETS
+      // (src/lib/palette.ts) because the colour-blindness check measures the
+      // same set: brackets have no channel besides colour. The history
+      // (crimson colliding with error, gold with ember, a transparent
+      // foreground6) is documented there and in the CHANGELOG.
       ...Object.fromEntries(
         BRACKETS.map((token, i) => [`editorBracketHighlight.foreground${i + 1}`, c[token]])
       ),
@@ -97,30 +98,31 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "editorGutter.deletedBackground": c.error,
       "diffEditor.insertedTextBackground": alpha(c.success, 0.12),
       "diffEditor.removedTextBackground": alpha(c.error, 0.12),
-      "diffEditor.insertedLineBackground": ch("diff: linha inserida"),
-      "diffEditor.removedLineBackground": ch("diff: linha removida"),
+      "diffEditor.insertedLineBackground": ch("diff: inserted line"),
+      "diffEditor.removedLineBackground": ch("diff: removed line"),
       "diffEditor.border": c.bg3,
-      // Sem isto a hachura das regiões vazias do diff lado a lado sai no
-      // cinza #cccccc33 do default — a maior mancha fria da tela de diff.
+      // Without this, the hatching in the empty regions of the side-by-side
+      // diff comes out in the default #cccccc33 grey — the biggest cold patch
+      // on the diff screen.
       "diffEditor.diagonalFill": alpha(c.bg3, 0.5),
       "diffEditor.unchangedRegionBackground": c.bg1,
       "diffEditor.unchangedRegionForeground": c.muted,
       "diffEditorGutter.insertedLineBackground": alpha(c.success, 0.12),
       "diffEditorGutter.removedLineBackground": alpha(c.error, 0.12),
 
-      // Diagnósticos
+      // Diagnostics
       "editorError.foreground": c.error,
       "editorWarning.foreground": c.warning,
       "editorInfo.foreground": c.info,
-      // A lâmpada de quick-fix aparece o tempo todo. Os defaults são #FFCC00
-      // (amarelo puro, briga com o gold) e #75BEFF (azul frio) no auto-fix.
+      // The quick-fix light bulb shows up all the time. The defaults are #FFCC00
+      // (pure yellow, clashes with gold) and #75BEFF (cold blue) for auto-fix.
       "editorLightBulb.foreground": c.gold,
       "editorLightBulbAutoFix.foreground": c.success,
       "editorLightBulbAi.foreground": c.orchid,
 
-      // Merge de conflitos — 12 chaves que estavam todas ausentes. Os defaults
-      // do VS Code são teal (current) e azul (incoming), em blocos grandes no
-      // meio do editor: era o maior vazamento frio do tema.
+      // Merge conflicts — 12 keys that were all missing. VS Code's defaults are
+      // teal (current) and blue (incoming), in large blocks in the middle of
+      // the editor: the theme's biggest cold leak.
       "merge.currentHeaderBackground": ch("merge: current header"),
       "merge.currentContentBackground": ch("merge: current content"),
       "merge.incomingHeaderBackground": ch("merge: incoming header"),
@@ -132,8 +134,8 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "editorOverviewRuler.incomingContentForeground": alpha(c.info, 0.6),
       "editorOverviewRuler.commonContentForeground": alpha(c.muted, 0.6),
 
-      // Painel de variáveis do debugger: os defaults são literalmente as cores
-      // do Dark+ (#c586c0 roxo, #4e94ce azul, #b5cea8 verde).
+      // Debugger variables panel: the defaults are literally the Dark+
+      // colours (#c586c0 purple, #4e94ce blue, #b5cea8 green).
       "debugTokenExpression.name": syn("property"),
       "debugTokenExpression.value": c.fg1,
       "debugTokenExpression.string": syn("string"),
@@ -145,8 +147,8 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "debugConsole.errorForeground": c.error,
       "debugConsole.sourceForeground": c.muted,
       "debugConsoleInputIcon.foreground": ui("accent"),
-      // Shell integration é padrão em pwsh e bash; o default é um teal #1B81A8
-      // na gutter do terminal.
+      // Shell integration is on by default in pwsh and bash; the default is a
+      // #1B81A8 teal in the terminal gutter.
       "terminalCommandDecoration.defaultBackground": c.muted,
       "terminalCommandDecoration.successBackground": c.success,
       "terminalCommandDecoration.errorBackground": c.error,
@@ -159,13 +161,13 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "welcomePage.progress.background": c.bg3,
       "welcomePage.progress.foreground": ui("accent"),
       "mergeEditor.change.background": alpha(c.gold, 0.14),
-      "mergeEditor.change.word.background": ch("mergeEditor: palavra"),
+      "mergeEditor.change.word.background": ch("mergeEditor: word"),
       "mergeEditor.conflict.unhandledUnfocused.border": alpha(c.error, 0.5),
       "mergeEditor.conflict.unhandledFocused.border": c.error,
       "mergeEditor.conflict.handledUnfocused.border": alpha(c.success, 0.4),
       "mergeEditor.conflict.handledFocused.border": c.success,
 
-      // Workbench: chrome geral
+      // Workbench: general chrome
       "foreground": c.fg1,
       "focusBorder": ui("accent"),
       "selection.background": c.selection,
@@ -181,15 +183,15 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "progressBar.background": ui("accent"),
       "editorGroup.border": c.bg3,
       "editorGroupHeader.noTabsBackground": c.bg0,
-      // Alimenta setas de árvore, ícones de toolbar e controles de dobra.
-      // Default #C5C5C5: cinza frio espalhado por toda a chrome.
+      // Feeds tree arrows, toolbar icons and folding controls.
+      // Default #C5C5C5: a cold grey spread across the whole chrome.
       "icon.foreground": c.fg1,
       "editorGutter.foldingControlForeground": c.muted,
 
-      // Ícones do IntelliSense, do Outline e do breadcrumb. Estavam todos
-      // ausentes, então o autocomplete abria com roxo #B180D7 e azul #75BEFF
-      // do Dark+ a cada tecla — a lacuna mais visível que sobrava.
-      // Seguem os mesmos roles da sintaxe, para o ícone combinar com o token.
+      // IntelliSense, Outline and breadcrumb icons. They were all missing, so
+      // autocomplete opened with Dark+'s #B180D7 purple and #75BEFF blue on
+      // every keystroke — the most visible gap left.
+      // They follow the same syntax roles, so the icon matches the token.
       "symbolIcon.classForeground": syn("type"),
       "symbolIcon.interfaceForeground": syn("type"),
       "symbolIcon.structForeground": syn("type"),
@@ -224,18 +226,18 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "symbolIcon.fileForeground": c.fg1,
       "symbolIcon.folderForeground": c.fg1,
 
-      // ESTRUTURA PLANA (direção Vercel): activity bar, sidebar, abas, painel,
-      // status bar e title bar ficam no MESMO fundo do editor. Quem separa as
-      // regiões são bordas de 1px em bg3 — não chapas de cinza. Só o que
-      // flutua por cima do código (widgets, menus) sobe para bg1.
+      // FLAT STRUCTURE: activity bar, sidebar, tabs, panel, status bar and
+      // title bar share the editor's background. Regions are separated by
+      // 1px bg3 borders — not grey panels. Only what floats above the code
+      // (widgets, menus) rises to bg1.
 
       // Sidebar / activity bar
       "activityBar.background": c.bg0,
       "activityBar.foreground": c.fg0,
       "activityBar.inactiveForeground": c.muted,
       "activityBar.border": c.bg3,
-      // Indicador do item ativo em branco, como a navegação da Vercel: o
-      // vermelho fica reservado para cursor, aba ativa, badges e foco.
+      // White active-item indicator: red is reserved for the cursor, active
+      // tab, badges and focus.
       "activityBar.activeBorder": c.fg0,
       "activityBar.activeBackground": alpha(c.bg2, 0),
       "activityBarBadge.background": ui("accent"),
@@ -250,15 +252,15 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "sideBarStickyScroll.background": c.bg0,
       "sideBarStickyScroll.border": c.bg3,
 
-      // Listas e árvores
+      // Lists and trees
       "list.activeSelectionBackground": c.bg2,
       "list.activeSelectionForeground": c.fg0,
       "list.inactiveSelectionBackground": alpha(c.bg2, 0.7),
       "list.inactiveSelectionForeground": c.fg0,
       "list.focusBackground": c.bg2,
       "list.focusForeground": c.fg0,
-      // Contorno neutro: com accent, cada clique no explorer desenhava um
-      // retângulo vermelho. O fundo bg2 já marca a linha.
+      // Neutral outline: with the accent, every click in the explorer drew a
+      // red rectangle. The bg2 background already marks the row.
       "list.focusOutline": c.bg3,
       "list.focusAndSelectionOutline": c.bg3,
       "list.hoverBackground": alpha(c.bg2, 0.5),
@@ -270,7 +272,7 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "tree.indentGuidesStroke": c.bg3,
       "tree.inactiveIndentGuidesStroke": alpha(c.bg3, 0.5),
 
-      // Barra de status
+      // Status bar
       "statusBar.background": c.bg0,
       "statusBar.foreground": c.fg1,
       "statusBar.border": c.bg3,
@@ -288,15 +290,15 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "statusBarItem.warningBackground": c.warning,
       "statusBarItem.warningForeground": c.bg0,
 
-      // Barra de título / abas
+      // Title bar / tabs
       "titleBar.activeBackground": c.bg0,
       "titleBar.activeForeground": c.fg1,
       "titleBar.inactiveBackground": c.bg0,
       "titleBar.inactiveForeground": c.muted,
       "titleBar.border": c.bg3,
-      // Abas no fundo do editor, sem divisórias entre elas; uma linha bg3
-      // fecha a faixa por baixo. A aba ativa se distingue pelo texto em fg0
-      // e por um sublinhado scarlet — o fio da jaqueta atravessando a UI.
+      // Tabs on the editor background, with no dividers between them; a bg3
+      // line closes the strip underneath. The active tab stands out by its fg0
+      // text and a scarlet underline — the jacket's thread running through the UI.
       "editorGroupHeader.tabsBackground": c.bg0,
       "editorGroupHeader.tabsBorder": c.bg3,
       "editorGroupHeader.border": c.bg3,
@@ -320,7 +322,7 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "breadcrumb.activeSelectionForeground": ui("accent"),
       "breadcrumbPicker.background": c.bg1,
 
-      // Painéis, terminal
+      // Panels, terminal
       "panel.background": c.bg0,
       "panel.border": c.bg3,
       "panelTitle.activeForeground": c.fg0,
@@ -334,8 +336,8 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "terminal.selectionBackground": alpha(c.selection, 0.7),
       "terminalCursor.foreground": ui("cursor"),
       "terminal.border": c.bg3,
-      // 16 slots ANSI, todos distintos: 8 bases vêm de roles.terminal e
-      // cada bright é a base clareada. Azul e ciano deixaram de colidir.
+      // 16 ANSI slots, all distinct: the 8 bases come from roles.terminal and
+      // each bright is the lightened base. Blue and cyan no longer collide.
       "terminal.ansiBlack": ansi("black"),
       "terminal.ansiRed": ansi("red"),
       "terminal.ansiGreen": ansi("green"),
@@ -353,9 +355,9 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "terminal.ansiBrightCyan": bright("cyan"),
       "terminal.ansiBrightWhite": bright("white"),
 
-      // Inputs, botões, dropdowns
-      // Inputs: um degrau acima do fundo, contornados por bg3 — o campo de
-      // formulário da Geist. O placeholder é o próprio muted (5.0:1 em bg1).
+      // Inputs, buttons, dropdowns
+      // Inputs: one step above the background, outlined in bg3. The
+      // placeholder is muted itself (5.0:1 on bg1).
       "input.background": c.bg1,
       "input.foreground": c.fg0,
       "input.border": c.bg3,
@@ -369,8 +371,8 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "inputValidation.warningBorder": c.warning,
       "inputValidation.infoBackground": c.bg1,
       "inputValidation.infoBorder": c.info,
-      // Botão primário BRANCO com texto quase preto: o botão da Vercel.
-      // O vermelho não vira cor de botão — fica para o que pede atenção.
+      // WHITE primary button with near-black text.
+      // Red never becomes a button colour — it's kept for what needs attention.
       "button.background": c.fg0,
       "button.foreground": c.bg0,
       "button.hoverBackground": c.fg1,
@@ -389,7 +391,7 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "checkbox.foreground": c.fg0,
       "checkbox.border": c.bg3,
 
-      // Menus e rótulos de atalho
+      // Menus and keybinding labels
       "menu.background": c.bg1,
       "menu.foreground": c.fg1,
       "menu.border": c.bg3,
@@ -424,9 +426,9 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "debugIcon.breakpointForeground": c.error,
       "debugIcon.breakpointDisabledForeground": c.muted,
       "editor.stackFrameHighlightBackground": ch("stack frame"),
-      "editor.focusedStackFrameHighlightBackground": ch("stack frame focado"),
+      "editor.focusedStackFrameHighlightBackground": ch("focused stack frame"),
 
-      // Testes
+      // Testing
       "testing.iconPassed": c.success,
       "testing.iconFailed": c.error,
       "testing.iconQueued": c.warning,
@@ -468,7 +470,7 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "gitDecoration.conflictingResourceForeground": c.orchid,
       "gitDecoration.stageModifiedResourceForeground": c.warning,
       "gitDecoration.stageDeletedResourceForeground": c.error,
-      // Defaults #73C991 (verde do Dark+) e #8db9e2 (azul frio).
+      // Defaults #73C991 (Dark+ green) and #8db9e2 (cold blue).
       "gitDecoration.renamedResourceForeground": c.success,
       "gitDecoration.submoduleResourceForeground": c.orchid,
 
@@ -477,7 +479,7 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "notebook.focusedCellBorder": ui("accent"),
       "notebook.cellBorderColor": c.bg3,
 
-      // Notificações, badge, scrollbar
+      // Notifications, badge, scrollbar
       "badge.background": ui("accent"),
       "badge.foreground": c.bg0,
       "notificationCenterHeader.background": c.bg2,
@@ -490,8 +492,8 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "scrollbarSlider.background": alpha(c.bg3, 0.5),
       "scrollbarSlider.hoverBackground": alpha(c.bg3, 0.8),
       "scrollbarSlider.activeBackground": alpha(c.muted, 0.6),
-      // Sombra quase invisível sobre quase preto; quem dá forma aos widgets
-      // é a borda bg3 (widget.border), como nos menus da Geist.
+      // A shadow is nearly invisible on near-black; widgets get their shape
+      // from the bg3 border (widget.border).
       "widget.shadow": alpha(c.bg0, 0.6),
       "widget.border": c.bg3,
       "scrollbar.shadow": alpha(c.bg0, 0),
@@ -500,15 +502,15 @@ export function generateVscodeTheme(p: PaletteFile): object {
     tokenColors: [
       { scope: ["comment", "punctuation.definition.comment"],
         settings: { foreground: syn("comment"), fontStyle: "italic" } },
-      // Tags de documentação (@param, <summary>, nomes de parâmetro no
-      // JSDoc/Javadoc) um degrau acima do comentário, ainda em itálico —
-      // sem herdar a cor de tag/keyword do código. Os seletores
-      // "comment X" cobrem as gramáticas; comment.documentation.* cobre o
-      // que o Roslyn manda para o XML doc do C#.
-      // O seletor precisa casar tantos segmentos quanto a regra que ele quer
-      // vencer: "comment variable" perde para "variable.parameter", porque o
-      // motor do TextMate decide primeiro pela profundidade no escopo do token
-      // e só depois pelos ancestrais.
+      // Documentation tags (@param, <summary>, parameter names in
+      // JSDoc/Javadoc) one step above the comment, still italic — without
+      // inheriting the code's tag/keyword colour. The "comment X" selectors
+      // cover the grammars; comment.documentation.* covers what Roslyn sends
+      // for C# XML docs.
+      // The selector must match as many segments as the rule it wants to
+      // beat: "comment variable" loses to "variable.parameter", because the
+      // TextMate engine decides first by depth in the token's scope and only
+      // then by ancestors.
       { scope: ["comment keyword", "comment keyword.other", "comment storage.type",
                 "comment storage.type.class", "comment variable", "comment variable.parameter",
                 "comment variable.other", "comment entity.name", "comment entity.name.tag",
@@ -518,25 +520,25 @@ export function generateVscodeTheme(p: PaletteFile): object {
                 "comment.documentation.attribute", "keyword.other.documentation",
                 "storage.type.class.jsdoc"],
         settings: { foreground: syn("doctag"), fontStyle: "italic" } },
-      // Código desligado por #if (C#): apagado como comentário, sem itálico.
+      // Code disabled by #if (C#): dimmed like a comment, without italics.
       { scope: ["support.other.excluded"],
         settings: { foreground: syn("comment"), fontStyle: "" } },
 
       { scope: ["keyword", "keyword.control"],
         settings: { foreground: syn("keyword") } },
 
-      // Declarações separadas do controle de fluxo (ver roles.syntax.storage)
+      // Declarations kept apart from control flow (see roles.syntax.storage)
       { scope: ["storage.type", "storage.modifier"],
         settings: { foreground: syn("storage") } },
 
-      // Palavras reservadas que NÃO são fluxo de controle vão para o cinza
-      // de storage, mesmo quando a gramática as chama de keyword:
-      //  - módulos: import/export/from/as (TS, Python), import/package
+      // Reserved words that are NOT control flow go to the storage grey,
+      // even when the grammar calls them keywords:
+      //  - modules: import/export/from/as (TS, Python), import/package
       //    (Java), use (Rust), using (C#), #include/#define (C/C++);
-      //  - keyword.other em geral: fn/impl/async (Rust), typedef/concept/
+      //  - keyword.other in general: fn/impl/async (Rust), typedef/concept/
       //    requires/= default (C++), debugger (TS);
-      //  - keyword.cs e keyword.type (C#): é para onde o Roslyn manda toda
-      //    palavra reservada que não é de controle (public, int, var, new…).
+      //  - keyword.cs and keyword.type (C#): where Roslyn sends every
+      //    non-control reserved word (public, int, var, new…).
       { scope: ["keyword.control.import", "keyword.control.export", "keyword.control.from",
                 "keyword.control.as", "keyword.control.type.ts", "keyword.control.type.tsx",
                 "keyword.control.default.ts", "keyword.control.default.tsx",
@@ -545,28 +547,29 @@ export function generateVscodeTheme(p: PaletteFile): object {
                 "keyword.control.directive", "keyword.preprocessor", "keyword.control.new",
                 "keyword.operator.new"],
         settings: { foreground: syn("storage") } },
-      // ...menos o que é compilação condicional (#if, #ifdef, #else), que é
-      // fluxo de controle em tempo de compilação, e o await do C#, que o
-      // Roslyn classifica como palavra de controle.
+      // ...except conditional compilation (#if, #ifdef, #else), which is
+      // compile-time control flow, and C#'s await, which Roslyn classifies as
+      // a control keyword.
       { scope: ["keyword.control.directive.conditional", "keyword.preprocessor.if",
                 "keyword.preprocessor.elif", "keyword.preprocessor.else",
                 "keyword.preprocessor.endif", "keyword.operator.expression.await"],
         settings: { foreground: syn("keyword") } },
-      // O Roslyn também manda true/false/null para keyword.cs: o TextMate do
-      // C# segue o mesmo cinza para a cor não trocar quando o servidor carrega.
+      // Roslyn also sends true/false/null to keyword.cs: the C# TextMate
+      // grammar follows the same grey so the colour doesn't change when the
+      // server loads.
       { scope: ["constant.language.null.cs", "constant.language.boolean.true.cs",
                 "constant.language.boolean.false.cs"],
         settings: { foreground: syn("storage") } },
-      // Ternário do Java vem como keyword.control; é operador.
+      // Java's ternary comes in as keyword.control; it's an operator.
       { scope: ["keyword.control.ternary"],
         settings: { foreground: syn("operator") } },
-      // ...mas onde a gramática usa storage.type para TIPOS de verdade
-      // (int/float primitivos, tipos em Java), volta a ser tipo.
+      // ...but where the grammar uses storage.type for real TYPES
+      // (primitive int/float, Java types), it goes back to being a type.
       { scope: ["storage.type.primitive", "storage.type.java", "storage.type.generic.java",
                 "storage.type.object.array.java", "storage.type.built-in",
                 "storage.type.numeric.rust", "storage.type.core.rust"],
         settings: { foreground: syn("type") } },
-      // Prefixo de string (f"…", r"…", b"…") é parte do literal, não storage.
+      // String prefix (f"…", r"…", b"…") is part of the literal, not storage.
       { scope: ["storage.type.string.python"],
         settings: { foreground: syn("string") } },
 
@@ -579,14 +582,14 @@ export function generateVscodeTheme(p: PaletteFile): object {
 
       { scope: ["constant.language", "constant.character", "variable.other.constant", "support.constant"],
         settings: { foreground: syn("constant") } },
-      // A gramática TS marca TODA declaração com const como constante. Sem
-      // esta exceção, cada `const x = …` acendia orquídea e a cor perdia o
-      // sentido; ela fica para literais e para CONSTANTES_EM_CAIXA_ALTA.
+      // The TS grammar marks EVERY const declaration as a constant. Without
+      // this exception every `const x = …` lit up orchid and the colour lost
+      // its meaning; it's kept for literals and CONSTANTS_IN_UPPER_CASE.
       { scope: ["meta.definition.variable variable.other.constant"],
         settings: { foreground: syn("variable") } },
-      // No TS o servidor marca toda const como readonly e o tema as pinta como
-      // variável (ver semanticTokenColors). O TextMate acompanha, para a
-      // CONSTANTE não piscar orquídea até o servidor carregar.
+      // In TS the server marks every const as readonly and the theme paints
+      // them as variables (see semanticTokenColors). TextMate follows, so the
+      // CONSTANT doesn't flash orchid until the server loads.
       { scope: ["variable.other.constant.ts", "variable.other.constant.tsx",
                 "variable.other.constant.js", "variable.other.constant.jsx"],
         settings: { foreground: syn("variable") } },
@@ -604,7 +607,7 @@ export function generateVscodeTheme(p: PaletteFile): object {
       { scope: ["variable", "meta.definition.variable"],
         settings: { foreground: syn("variable") } },
 
-      // this / self / super: variável na gramática, palavra-chave na cabeça de quem lê
+      // this / self / super: a variable to the grammar, a keyword to the reader
       { scope: ["variable.language", "variable.parameter.function.language.special",
                 "variable.language.special"],
         settings: { foreground: syn("builtin"), fontStyle: "italic" } },
@@ -613,10 +616,10 @@ export function generateVscodeTheme(p: PaletteFile): object {
                 "entity.name.scope-resolution"],
         settings: { foreground: syn("namespace") } },
 
-      // Metaprogramação com uma cor só, em todas as linguagens: @decorator
-      // (TS, Python), @Annotation (Java), #[atributo] (Rust), [[atributo]]
-      // (C++). O seletor composto vence a regra de variável/função que a
-      // gramática aplica ao nome dentro do decorator.
+      // Metaprogramming in a single colour, in every language: @decorator
+      // (TS, Python), @Annotation (Java), #[attribute] (Rust), [[attribute]]
+      // (C++). The compound selector beats the variable/function rule the
+      // grammar applies to the name inside the decorator.
       { scope: ["meta.decorator", "entity.name.function.decorator", "punctuation.decorator",
                 "punctuation.definition.decorator", "meta.decorator variable.other",
                 "meta.decorator entity.name.function", "meta.function.decorator support.type",
@@ -627,7 +630,7 @@ export function generateVscodeTheme(p: PaletteFile): object {
                 "punctuation.brackets.attribute",
                 "entity.other.attribute", "punctuation.section.attribute"],
         settings: { foreground: syn("decorator") } },
-      // Lifetimes do Rust ('a) são parâmetros genéricos: cor de tipo, em itálico.
+      // Rust lifetimes ('a) are generic parameters: type colour, italic.
       { scope: ["entity.name.type.lifetime", "punctuation.definition.lifetime",
                 "storage.modifier.lifetime"],
         settings: { foreground: syn("type"), fontStyle: "italic" } },
@@ -654,19 +657,19 @@ export function generateVscodeTheme(p: PaletteFile): object {
                 "keyword.operator.quantifier.regexp", "keyword.operator.or.regexp",
                 "keyword.operator.negation.regexp", "string.regexp keyword.other"],
         settings: { foreground: syn("regexp") } },
-      // Nome de grupo nomeado é identificador, como (?<title>…) no TS — não tag.
+      // A named group's name is an identifier, like (?<title>…) in TS — not a tag.
       { scope: ["entity.name.tag.named.group.regexp"],
         settings: { foreground: syn("variable") } },
 
       { scope: ["constant.character.escape"],
         settings: { foreground: syn("escape") } },
 
-      // As marcas ${ } destacam-se do corpo da template string
+      // The ${ } marks stand out from the template string body
       { scope: ["punctuation.definition.template-expression",
                 "punctuation.section.embedded", "punctuation.definition.interpolation",
                 "meta.interpolation.rust", "storage.type.format.python"],
         settings: { foreground: syn("interpolation") } },
-      // ...mas o que está DENTRO delas volta a ser código normal
+      // ...but what's INSIDE them is ordinary code again
       { scope: ["meta.embedded", "meta.template.expression"],
         settings: { foreground: syn("variable") } },
 
@@ -679,15 +682,15 @@ export function generateVscodeTheme(p: PaletteFile): object {
         settings: { foreground: syn("string") } },
       { scope: ["markup.underline.link"],
         settings: { foreground: syn("function") } },
-      // Também é o escopo para onde o rust-analyzer manda variáveis `mut`:
-      // o sublinhado marca mutabilidade sem gastar uma cor.
+      // Also the scope rust-analyzer sends `mut` variables to: the underline
+      // marks mutability without spending a colour.
       { scope: ["markup.underline"], settings: { fontStyle: "underline" } },
       { scope: ["markup.quote"],
         settings: { foreground: syn("quote") } },
       { scope: ["markup.list punctuation.definition.list", "beginning.punctuation.definition.list"],
         settings: { foreground: syn("keyword") } },
 
-      // Diffs e patches
+      // Diffs and patches
       { scope: ["markup.inserted", "meta.diff.header.to-file"],
         settings: { foreground: syn("inserted") } },
       { scope: ["markup.deleted", "meta.diff.header.from-file"],
@@ -701,18 +704,18 @@ export function generateVscodeTheme(p: PaletteFile): object {
       { scope: ["support.type.property-name.json"],
         settings: { foreground: syn("function") } },
 
-      // CSS. O fontStyle vazio é obrigatório: seletores de classe/id são
-      // entity.other.attribute-name, e sem isto herdariam o itálico da regra
-      // de atributo HTML — o guia de estilo restringe itálico a comentário,
-      // parâmetro e atributo HTML.
+      // CSS. The empty fontStyle is required: class/id selectors are
+      // entity.other.attribute-name, and without it they would inherit the
+      // italics of the HTML attribute rule — the style guide limits italics to
+      // comments, parameters and HTML attributes.
       //
-      // A lista precisa cobrir SCSS e LESS explicitamente. SCSS reaproveita os
-      // escopos `.css` para classe/id/pseudo, mas tem os seus próprios para
-      // `%placeholder` e para o sufixo `&__elem` — que é como BEM escreve
-      // quase todo seletor. LESS não reaproveita nada: usa sufixo `.less` em
-      // tudo, então nenhuma regra acima o alcançava e TODO seletor de classe
-      // em arquivo .less saía itálico e em `dusk`. Era exatamente o bug que
-      // este bloco existe para evitar, só que fora do .css.
+      // The list must cover SCSS and LESS explicitly. SCSS reuses the `.css`
+      // scopes for class/id/pseudo, but has its own for `%placeholder` and for
+      // the `&__elem` suffix — which is how BEM writes almost every selector.
+      // LESS reuses nothing: it uses a `.less` suffix everywhere, so none of
+      // the rules above reached it and EVERY class selector in a .less file
+      // came out italic and in the wrong colour. Exactly the bug this block exists to
+      // prevent, just outside .css.
       { scope: ["entity.other.attribute-name.class.css", "entity.other.attribute-name.id.css",
                 "entity.other.attribute-name.pseudo-class.css", "entity.other.attribute-name.pseudo-element.css",
                 "entity.other.attribute-name.placeholder.css",
@@ -731,16 +734,16 @@ export function generateVscodeTheme(p: PaletteFile): object {
         settings: { foreground: p.palette.error } },
     ],
 
-    // Tokens semânticos vêm do servidor de linguagem e pintam POR CIMA do
-    // TextMate. Tipos sem regra aqui caem no semanticTokenScopes que cada
-    // extensão declara (rust-analyzer, C#, Java, C/C++) e daí nas regras
-    // TextMate acima — por isso várias correções moram lá, nos escopos de
-    // fallback (keyword.other.rust, keyword.cs, storage.type.annotation…).
+    // Semantic tokens come from the language server and paint OVER
+    // TextMate. Types without a rule here fall back to the semanticTokenScopes
+    // each extension declares (rust-analyzer, C#, Java, C/C++) and from there
+    // to the TextMate rules above — which is why several fixes live there, in
+    // the fallback scopes (keyword.other.rust, keyword.cs, storage.type.annotation…).
     //
-    // NÃO existe regra para "keyword": o rust-analyzer e o Roslyn emitem
-    // keyword para quase toda palavra reservada (fn, let, pub, public, int,
-    // true…). Sem regra, ela cai em keyword.other.rust / keyword.cs (cinza),
-    // e só keyword.controlFlow / controlKeyword chegam ao scarlet.
+    // There is NO rule for "keyword": rust-analyzer and Roslyn emit keyword
+    // for almost every reserved word (fn, let, pub, public, int, true…).
+    // Without a rule it falls to keyword.other.rust / keyword.cs (grey), and
+    // only keyword.controlFlow / controlKeyword reach scarlet.
     semanticTokenColors: {
       "function": syn("function"),
       "method": syn("function"),
@@ -760,10 +763,10 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "const": syn("constant"),
       "constant": syn("constant"),
 
-      // readonly NÃO é sinônimo de constante: no TS toda const é readonly,
-      // no Java todo final, no C++ todo const. Só vira orquídea o que é
-      // constante de verdade — estático, global, de biblioteca — e, no
-      // Python, o que o Pylance marca como readonly (Final, CAIXA_ALTA).
+      // readonly is NOT a synonym for constant: in TS every const is readonly,
+      // in Java every final, in C++ every const. Only real constants turn
+      // orchid — static, global, library — and, in Python, whatever Pylance
+      // marks as readonly (Final, UPPER_CASE).
       "variable.readonly": syn("variable"),
       "property.readonly.static": syn("constant"),
       "variable.readonly.static": syn("constant"),
@@ -784,7 +787,7 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "namespace": syn("namespace"),
       "module": syn("namespace"),
 
-      // Metaprogramação (ver regra TextMate de decorator)
+      // Metaprogramming (see the TextMate decorator rule)
       "decorator": syn("decorator"),
       "*.decorator": syn("decorator"),
       "annotation": syn("decorator"),
@@ -792,8 +795,8 @@ export function generateVscodeTheme(p: PaletteFile): object {
       "builtinAttribute": syn("decorator"),
       "deriveHelper": syn("decorator"),
       "derive": syn("type"),
-      // Macro de C/C++ é quase sempre uma constante em CAIXA_ALTA; macro do
-      // Rust (println!, vec!) é chamada como função.
+      // A C/C++ macro is almost always an UPPER_CASE constant; a Rust macro
+      // (println!, vec!) is called like a function.
       "macro": syn("constant"),
       "macro:rust": syn("function"),
       "lifetime": { foreground: syn("type"), italic: true },

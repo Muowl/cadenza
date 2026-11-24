@@ -21,8 +21,8 @@ export class Encore<T extends Track> implements Iterable<T> {
   }
 
   /**
-   * Próxima faixa do encore.
-   * @param hint - título preferido
+   * Next track of the encore.
+   * @param hint - preferred title
    */
   async next(hint?: string): Promise<T | undefined> {
     if (this.done) throw new Error(`acabou: ${this.#round}`);

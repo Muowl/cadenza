@@ -1,0 +1,211 @@
+// ============================================================
+// Valida a TOKENIZAÇÃO real do tema. Falha (exit 1) se um token
+// de um fixture resolver para cor ou fontStyle errados.
+//
+// É o "Developer: Inspect Editor Tokens and Scopes" automatizado:
+// usa o MESMO motor do VS Code (vscode-textmate + vscode-oniguruma)
+// e as gramáticas publicadas (tests/grammars/, vendidas do repositório
+// microsoft/vscode), então o que passa aqui é o que o editor pinta.
+//
+// O que este check protege:
+//   - o itálico restrito a comentário / parâmetro / atributo HTML —
+//     inclusive a regra de exceção para seletores CSS/LESS/SCSS, cujo
+//     vazamento (todo seletor .less em itálico) já aconteceu uma vez;
+//   - o trio tag / attribute / componente em HTML e JSX, que é onde
+//     as decisões de cor mais disputadas do tema se encontram.
+//
+// O tema é gerado EM MEMÓRIA a partir do YAML (não lê themes/*.json),
+// então o check não depende da ordem build/check.
+// ============================================================
+
+import { join } from "node:path";
+import { readFileSync } from "node:fs";
+import { vsctm, criaRegistry, tokenizaArquivo, ESCOPO_POR_EXTENSAO, TokenPintado } from "./lib/textmate";
+import { PaletteFile, loadAllPalettes } from "../src/lib/palette";
+import { generateVscodeTheme } from "../src/generators/vscode";
+
+const raiz = join(import.meta.dirname, "..");
+
+// ------------------------------------------------------------
+// Casos: cada linha diz "este trecho deste fixture sai nesta cor,
+// com ou sem itálico". A cor é um role de roles.syntax (ou um token
+// da palette, para punctuation de tag etc.) — nunca hex solto.
+// A âncora é o PRIMEIRO caractere da primeira ocorrência do trecho
+// na linha indicada.
+// ------------------------------------------------------------
+interface Caso {
+  arquivo: string;
+  linha: number;      // 1-based
+  trecho: string;
+  role: string;       // chave de roles.syntax
+  italico: boolean;
+}
+
+const casos: Caso[] = [
+  // CSS — seletores NÃO herdam o itálico de atributo HTML
+  { arquivo: "sample.css", linha: 1, trecho: "comentário", role: "comment", italico: true },
+  { arquivo: "sample.css", linha: 2, trecho: "cartao", role: "type", italico: false },
+  { arquivo: "sample.css", linha: 2, trecho: "hover", role: "type", italico: false },
+  { arquivo: "sample.css", linha: 2, trecho: "after", role: "type", italico: false },
+  { arquivo: "sample.css", linha: 2, trecho: "color", role: "variable", italico: false },
+  { arquivo: "sample.css", linha: 3, trecho: "principal", role: "type", italico: false },
+
+  // LESS — o vazamento corrigido: escopos .less não eram cobertos
+  { arquivo: "sample.less", linha: 1, trecho: "comentário", role: "comment", italico: true },
+  { arquivo: "sample.less", linha: 2, trecho: "botao", role: "type", italico: false },
+  { arquivo: "sample.less", linha: 3, trecho: "topo", role: "type", italico: false },
+  { arquivo: "sample.less", linha: 3, trecho: "hover", role: "type", italico: false },
+  { arquivo: "sample.less", linha: 5, trecho: "__titulo", role: "type", italico: false },
+  { arquivo: "sample.less", linha: 6, trecho: "extend", role: "type", italico: false },
+
+  // SCSS — %placeholder e o sufixo &__elem do BEM
+  { arquivo: "sample.scss", linha: 1, trecho: "comentário", role: "comment", italico: true },
+  { arquivo: "sample.scss", linha: 2, trecho: "base", role: "type", italico: false },
+  { arquivo: "sample.scss", linha: 3, trecho: "cartao", role: "type", italico: false },
+  // A gramática SCSS marca o identificador do sufixo `&__elem` inteiro como
+  // punctuation.definition.entity.css (dentro do escopo de parent-selector-
+  // suffix), então a cor final é a de pontuação — diferente do LESS, que dá
+  // ember. O que este caso trava é o ITÁLICO: antes do fix o sufixo herdava
+  // o itálico de atributo HTML mesmo saindo em fg1.
+  { arquivo: "sample.scss", linha: 4, trecho: "__titulo", role: "punctuation", italico: false },
+  { arquivo: "sample.scss", linha: 5, trecho: "hover", role: "type", italico: false },
+
+  // HTML — aqui o itálico de atributo É desejado
+  { arquivo: "sample.html", linha: 1, trecho: "comentário", role: "comment", italico: true },
+  { arquivo: "sample.html", linha: 2, trecho: "div", role: "tag", italico: false },
+  { arquivo: "sample.html", linha: 2, trecho: "<", role: "punctuation", italico: false },
+  { arquivo: "sample.html", linha: 2, trecho: "class", role: "attribute", italico: true },
+  { arquivo: "sample.html", linha: 2, trecho: "cartao", role: "string", italico: false },
+  { arquivo: "sample.html", linha: 3, trecho: "a href", role: "tag", italico: false },
+  { arquivo: "sample.html", linha: 3, trecho: "href", role: "attribute", italico: true },
+
+  // TSX — o trio tag × atributo × componente do JSX
+  { arquivo: "sample.tsx", linha: 1, trecho: "comentário", role: "comment", italico: true },
+  { arquivo: "sample.tsx", linha: 2, trecho: "import", role: "keyword", italico: false },
+  { arquivo: "sample.tsx", linha: 4, trecho: "export", role: "keyword", italico: false },
+  { arquivo: "sample.tsx", linha: 4, trecho: "function", role: "storage", italico: false },
+  { arquivo: "sample.tsx", linha: 4, trecho: "Cartao", role: "function", italico: false },
+  { arquivo: "sample.tsx", linha: 5, trecho: "const", role: "storage", italico: false },
+  // const declara variável comum, não constante: fica em fg0
+  { arquivo: "sample.tsx", linha: 5, trecho: "rotulo", role: "variable", italico: false },
+  { arquivo: "sample.tsx", linha: 4, trecho: "props", role: "parameter", italico: true },
+  { arquivo: "sample.tsx", linha: 4, trecho: "CartaoProps", role: "type", italico: false },
+  { arquivo: "sample.tsx", linha: 5, trecho: "Item:", role: "string", italico: false },
+  { arquivo: "sample.tsx", linha: 5, trecho: "${", role: "interpolation", italico: false },
+  { arquivo: "sample.tsx", linha: 6, trecho: "return", role: "keyword", italico: false },
+  { arquivo: "sample.tsx", linha: 7, trecho: "<", role: "punctuation", italico: false },
+  { arquivo: "sample.tsx", linha: 7, trecho: "section", role: "tag", italico: false },
+  { arquivo: "sample.tsx", linha: 7, trecho: "className", role: "attribute", italico: true },
+  { arquivo: "sample.tsx", linha: 8, trecho: "Botao", role: "type", italico: false },
+  { arquivo: "sample.tsx", linha: 8, trecho: "onClick", role: "attribute", italico: true },
+];
+
+// ------------------------------------------------------------
+// Execução
+// ------------------------------------------------------------
+/** Roda todos os casos para uma paleta; devolve o número de falhas. */
+async function rodaPaleta(p: PaletteFile): Promise<number> {
+  const c = p.palette;
+  const registry = await criaRegistry();
+
+  // O tema entra no registry como o VS Code o entrega: tokenColors precedidos
+  // do default (editor.foreground/background).
+  const tema = generateVscodeTheme(p) as {
+    colors: Record<string, string>;
+    tokenColors: vsctm.IRawThemeSetting[];
+  };
+  registry.setTheme({
+    name: p.meta.slug,
+    settings: [
+      {
+        settings: {
+          foreground: tema.colors["editor.foreground"],
+          background: tema.colors["editor.background"],
+        },
+      },
+      ...tema.tokenColors,
+    ],
+  });
+
+  // Tokeniza cada fixture uma vez
+  const porArquivo = new Map<string, TokenPintado[][]>();
+  for (const arquivo of new Set(casos.map((k) => k.arquivo))) {
+    const extensao = arquivo.split(".").pop()!;
+    const grammar = await registry.loadGrammar(ESCOPO_POR_EXTENSAO[extensao]);
+    if (!grammar) throw new Error(`gramática não carregou para ${arquivo}`);
+    const linhas = readFileSync(join(raiz, "tests", "fixtures", arquivo), "utf8").split(/\r?\n/);
+    porArquivo.set(arquivo, tokenizaArquivo(registry, grammar, linhas));
+  }
+
+  let falhas = 0;
+  const diagnosticos: string[] = [];
+  const linhasTabela: string[][] = [];
+
+  for (const caso of casos) {
+    const token = c[p.roles.syntax[caso.role]];
+    const esperadoCor = token.toLowerCase();
+    const rotulo = `${p.roles.syntax[caso.role]}/${caso.role}`;
+
+    const linhas = readFileSync(join(raiz, "tests", "fixtures", caso.arquivo), "utf8").split(/\r?\n/);
+    const idx = linhas[caso.linha - 1]?.indexOf(caso.trecho) ?? -1;
+    let obtido = "— trecho não encontrado —";
+    let ok = false;
+    let escopos: string[] = [];
+
+    if (idx >= 0) {
+      const pintado = porArquivo
+        .get(caso.arquivo)!
+        [caso.linha - 1].find((t) => t.inicio <= idx && idx < t.fim);
+      if (pintado) {
+        obtido = `${pintado.cor}${pintado.italico ? " itálico" : ""}`;
+        ok = pintado.cor === esperadoCor && pintado.italico === caso.italico;
+        escopos = pintado.escopos;
+      }
+    }
+    if (!ok) {
+      falhas++;
+      diagnosticos.push(
+        `✘ ${caso.arquivo}:${caso.linha} "${caso.trecho}" — escopos: ${escopos.join(", ") || "?"}`
+      );
+    }
+    linhasTabela.push([
+      `${caso.arquivo}:${caso.linha}`,
+      caso.trecho,
+      `${esperadoCor}${caso.italico ? " itálico" : ""} (${rotulo})`,
+      obtido,
+      ok ? "✔" : "✘ DIVERGE",
+    ]);
+  }
+
+  // Tabela alinhada, no formato do check_contrast
+  const cab = ["onde", "trecho", "esperado", "obtido", "status"];
+  const larguras = cab.map((h, i) => Math.max(h.length, ...linhasTabela.map((l) => l[i].length)));
+  const fmt = (l: string[]) => l.map((cel, i) => cel.padEnd(larguras[i])).join("  ");
+  console.log(`\n[${p.meta.name}] tokenização real contra as gramáticas do VS Code:\n`);
+  console.log(fmt(cab));
+  console.log(larguras.map((w) => "-".repeat(w)).join("  "));
+  for (const l of linhasTabela) console.log(fmt(l));
+
+  if (falhas > 0) {
+    console.error(`\n[${p.meta.name}] escopos dos casos que falharam:`);
+    for (const d of diagnosticos) console.error(d);
+  }
+  return falhas;
+}
+
+async function main(): Promise<void> {
+  const paletas = loadAllPalettes(join(raiz, "palette"));
+  let falhas = 0;
+  for (const { p } of paletas) falhas += await rodaPaleta(p);
+
+  if (falhas > 0) {
+    console.error(`\n✘ ${falhas} caso(s) de tokenização divergem do esperado.`);
+    process.exit(1);
+  }
+  console.log(`\n✔ ${casos.length} casos × ${paletas.length} paleta(s) de tokenização conferem com o tema.`);
+}
+
+main().catch((erro) => {
+  console.error(erro);
+  process.exit(1);
+});

@@ -1,0 +1,71 @@
+{
+  "name": "cadenza-theme",
+  "displayName": "Cadenza",
+  "description": "A near-black theme with Vercel's restraint and the colors of Astra Yao: scarlet, gold, jade and lilac. Fan-made and unaffiliated with HoYoverse; inspired by Astra Yao from Zenless Zone Zero.",
+  "version": "0.1.0",
+  "publisher": "muowl",
+  "license": "MIT",
+  "icon": "assets/logo.png",
+  "galleryBanner": {
+    "color": "#0d0f10",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Muowl/cadenza.git"
+  },
+  "homepage": "https://github.com/Muowl/cadenza#readme",
+  "bugs": {
+    "url": "https://github.com/Muowl/cadenza/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Themes"
+  ],
+  "keywords": [
+    "dark theme",
+    "near black",
+    "minimal",
+    "vercel",
+    "red",
+    "kitty",
+    "hyprland"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "label": "Cadenza",
+        "uiTheme": "vs-dark",
+        "path": "./themes/cadenza-color-theme.json"
+      },
+      {
+        "label": "Cadenza Chandelier",
+        "uiTheme": "vs-dark",
+        "path": "./themes/cadenza-chandelier-color-theme.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "check": "tsx scripts/check_contrast.ts && tsx scripts/check_cvd.ts && tsx scripts/check_tokens.ts",
+    "build": "npm run check && tsx src/generate.ts",
+    "watch": "tsx watch src/generate.ts",
+    "package": "npx --yes @vscode/vsce package",
+    "publish:vsce": "npx --yes @vscode/vsce publish",
+    "publish:ovsx": "npx --yes ovsx publish",
+    "preview": "tsx scripts/preview.ts"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.10.0",
+    "geist": "^1.9.2",
+    "js-yaml": "^4.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
+  }
+}

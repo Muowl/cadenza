@@ -1,0 +1,34 @@
+/* Cadenza Chandelier — Waybar (GTK CSS)
+ * Gerado por src/generators/desktop.ts a partir de palette/. NÃO editar à mão.
+ *
+ * No style.css:
+ *   @import "cadenza-chandelier.css";
+ *   window#waybar { background: @bg0; color: @fg1; border-bottom: 1px solid @bg3; }
+ *   #workspaces button.active { color: @fg0; box-shadow: inset 0 -2px @accent; }
+ *   #workspaces button.urgent { color: @urgent; }
+ */
+
+@define-color bg0 #080a0b;
+@define-color bg1 #0e1112;
+@define-color bg2 #171a1b;
+@define-color bg3 #272b2d;
+@define-color selection #0c2b34;
+@define-color fg0 #e8eced;
+@define-color fg1 #a7acad;
+@define-color muted #81878a;
+@define-color scarlet #f05252;
+@define-color orchid #c775c9;
+@define-color lilac #a5b5eb;
+@define-color jade #8bdacf;
+@define-color gold #eecf84;
+@define-color error #f05252;
+@define-color warning #fab048;
+@define-color info #80a7f0;
+@define-color success #a4ce6c;
+@define-color bronze #d49e6f;
+@define-color accent #d49e6f;
+@define-color cursor #d49e6f;
+@define-color link #80a7f0;
+@define-color border_active #d49e6f;
+@define-color border_inactive #272b2d;
+@define-color urgent #f05252;

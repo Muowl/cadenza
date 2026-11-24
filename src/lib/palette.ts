@@ -1,0 +1,340 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { load } from "js-yaml";
+
+export interface PaletteFile {
+  meta: {
+    name: string;
+    slug: string;
+    variant: "dark" | "light";
+    author: string;
+    description: string;
+  };
+  anchors: Record<string, string>;
+  palette: Record<string, string>;
+  roles: {
+    syntax: Record<string, string>;
+    ui: Record<string, string>;
+    terminal: Record<string, string>;
+    /**
+     * Exceções à regra "bright = base clareada". Só existe porque um slot
+     * precisou fugir dela; ver o comentário no YAML.
+     */
+    "terminal-bright"?: Record<string, string>;
+  };
+}
+
+export type RoleGroup = "syntax" | "ui" | "terminal";
+
+const GRUPOS: readonly RoleGroup[] = ["syntax", "ui", "terminal"];
+
+/**
+ * O quanto um slot ANSI "bright" sobe de luminosidade em relação à sua base,
+ * em L de OKLCH, com matiz e croma preservados. É o método da paleta de
+ * terminal da Vercel: os seis acentos "bright" sobem o MESMO degrau
+ * perceptual, em vez de cada um clarear de um jeito (misturar com branco
+ * lava o croma e faz o amarelo subir muito mais que o azul).
+ * Vive aqui para que gerador e validador de contraste nunca divirjam.
+ */
+export const ANSI_BRIGHT_L = 0.1;
+
+/**
+ * Cores da colorização de pares de brackets, nível 1 a 6 (o VSCode registra
+ * até foreground6; sem o 6º, brackets fundos ficam transparentes).
+ *
+ * Brackets não têm segundo canal de distinção — é só cor, sem itálico nem
+ * contexto — então este conjunto é o mais sensível a daltonismo do tema.
+ * Vive aqui para que o gerador pinte e o check de daltonismo meça EXATAMENTE
+ * o mesmo conjunto (regra 4: constante compartilhada não se duplica).
+ */
+//
+// Cadenza cicla TRÊS cores, não seis: é a contenção da direção Vercel. O
+// nível 1 é a própria pontuação (fg1) — o par mais externo não ganha cor —
+// e os níveis 2 e 3 usam lilac e jade. Gold e orchid ficam de fora de
+// propósito: são string e número, e um parêntese dourado colado numa string
+// dourada vira uma coisa só.
+export const BRACKETS = ["fg1", "lilac", "jade", "fg1", "lilac", "jade"] as const;
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * Chapas semitransparentes que o VSCode desenha ATRÁS do texto: realce de
+ * busca, blocos de merge, linha do stack frame, match do peek view.
+ *
+ * O olho lê a cor COMPOSTA, não o token — medir contraste contra `bg0` nesses
+ * casos produz um número que ninguém enxerga. O find match estava em alpha
+ * 0.35, o que derrubava comentário para 2.34:1 sobre a chapa enquanto o gate
+ * reportava ✔, porque o gate só olhava para cores opacas.
+ *
+ * Mora aqui, e não no gerador, porque o validador precisa exatamente dos
+ * mesmos alphas (regra 4: constante compartilhada não se duplica).
+ */
+export interface Chapa {
+  /** Token da palette que tinge a chapa. */
+  token: string;
+  /** Opacidade da chapa sobre o fundo. */
+  alpha: number;
+  /** Token de fundo sobre o qual ela é composta. */
+  fundo: string;
+}
+
+// Os alphas param um degrau ABAIXO do teto que ainda daria 3:1. Encostar no
+// piso deixa o token sem margem: qualquer ajuste futuro na palette quebraria
+// o gate.
+export const CHAPAS: Record<string, Chapa> = {
+  "find match": { token: "gold", alpha: 0.21, fundo: "bg0" },
+  "find match (outros)": { token: "gold", alpha: 0.16, fundo: "bg0" },
+  "stack frame": { token: "gold", alpha: 0.18, fundo: "bg0" },
+  "stack frame focado": { token: "success", alpha: 0.2, fundo: "bg0" },
+  "merge: current header": { token: "scarlet", alpha: 0.26, fundo: "bg0" },
+  "merge: current content": { token: "scarlet", alpha: 0.14, fundo: "bg0" },
+  "merge: incoming header": { token: "info", alpha: 0.26, fundo: "bg0" },
+  "merge: incoming content": { token: "info", alpha: 0.14, fundo: "bg0" },
+  "mergeEditor: palavra": { token: "gold", alpha: 0.21, fundo: "bg0" },
+  "peek: match": { token: "gold", alpha: 0.17, fundo: "bg1" },
+  "diff: linha inserida": { token: "success", alpha: 0.08, fundo: "bg0" },
+  "diff: linha removida": { token: "error", alpha: 0.08, fundo: "bg0" },
+};
+
+/** Separa um #rrggbb em canais 0-255. */
+function canais(hex: string): [number, number, number] {
+  return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
+}
+
+/** A chapa como o VSCode a consome: #rrggbbaa. */
+export function chapa(p: PaletteFile, nome: string): string {
+  const ch = CHAPAS[nome];
+  if (!ch) throw new Error(`chapa desconhecida: ${nome}`);
+  return alpha(p.palette[ch.token], ch.alpha);
+}
+
+/**
+ * A cor OPACA que a chapa produz sobre seu fundo — o que o olho vê e o que
+ * o contraste do texto por cima precisa ser medido contra.
+ */
+export function chapaComposta(p: PaletteFile, nome: string): string {
+  const ch = CHAPAS[nome];
+  if (!ch) throw new Error(`chapa desconhecida: ${nome}`);
+  const frente = canais(p.palette[ch.token]);
+  const fundo = canais(p.palette[ch.fundo]);
+  const mix = frente.map((f, i) => Math.round(f * ch.alpha + fundo[i] * (1 - ch.alpha)));
+  return "#" + mix.map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+
+/** Carrega e valida a fonte da verdade. */
+export function loadPalette(path: string): PaletteFile {
+  const data = load(readFileSync(path, "utf8")) as PaletteFile;
+  valida(data);
+  return data;
+}
+
+/**
+ * Carrega uma VARIANTE: um overlay que declara `meta:` completo e só os
+ * tokens de `palette:` que mudam — todo o resto (tokens não citados e os
+ * `roles:` inteiros) vem da base. É o que impede uma variante de virar uma
+ * cópia divergente: decisão semântica continua num lugar só.
+ */
+export function loadPaletteVariant(basePath: string, overlayPath: string): PaletteFile {
+  const base = loadPalette(basePath);
+  const overlay = load(readFileSync(overlayPath, "utf8")) as Partial<PaletteFile>;
+  if (!overlay.meta?.name || !overlay.meta?.slug) {
+    throw new Error(`${overlayPath}: variante precisa de meta.name e meta.slug próprios`);
+  }
+  const data: PaletteFile = {
+    meta: overlay.meta,
+    anchors: base.anchors,
+    palette: { ...base.palette, ...(overlay.palette ?? {}) },
+    roles: overlay.roles
+      ? {
+          syntax: { ...base.roles.syntax, ...(overlay.roles.syntax ?? {}) },
+          ui: { ...base.roles.ui, ...(overlay.roles.ui ?? {}) },
+          terminal: { ...base.roles.terminal, ...(overlay.roles.terminal ?? {}) },
+          "terminal-bright": overlay.roles["terminal-bright"] ?? base.roles["terminal-bright"],
+        }
+      : base.roles,
+  };
+  valida(data);
+  return data;
+}
+
+/**
+ * Todas as paletas do projeto: a base (cadenza.yaml) e cada overlay de
+ * variante no mesmo diretório. Geradores e validadores iteram por aqui —
+ * uma variante nasce automaticamente coberta pelos três gates.
+ */
+export function loadAllPalettes(
+  dir: string
+): { p: PaletteFile; ehBase: boolean }[] {
+  const base = join(dir, "cadenza.yaml");
+  const overlays = readdirSync(dir)
+    .filter((f) => f.endsWith(".yaml") && f !== "cadenza.yaml")
+    .sort();
+  return [
+    { p: loadPalette(base), ehBase: true },
+    ...overlays.map((f) => ({ p: loadPaletteVariant(base, join(dir, f)), ehBase: false })),
+  ];
+}
+
+function valida(data: PaletteFile): void {
+  for (const [name, hex] of Object.entries(data.palette)) {
+    if (!HEX_RE.test(hex)) {
+      throw new Error(`palette.${name}: "${hex}" não é hex válido (#rrggbb)`);
+    }
+  }
+
+  for (const group of GRUPOS) {
+    if (!data.roles[group]) {
+      throw new Error(`roles.${group} está ausente na palette`);
+    }
+    for (const [role, token] of Object.entries(data.roles[group])) {
+      if (!(token in data.palette)) {
+        throw new Error(
+          `roles.${group}.${role} referencia "${token}", que não existe na palette`
+        );
+      }
+    }
+  }
+
+  for (const [slot, token] of Object.entries(data.roles["terminal-bright"] ?? {})) {
+    if (!(slot in data.roles.terminal)) {
+      throw new Error(`roles.terminal-bright.${slot} não é um slot ANSI`);
+    }
+    if (!(token in data.palette)) {
+      throw new Error(
+        `roles.terminal-bright.${slot} referencia "${token}", que não existe na palette`
+      );
+    }
+  }
+}
+
+/**
+ * A cor final de um slot ANSI "bright": normalmente a base clareada, mas o
+ * YAML pode apontar um token direto para os casos em que a regra não serve.
+ * Gerador e validador chamam esta função — é o que impede os dois de divergirem.
+ */
+export function ansiBright(p: PaletteFile, slot: string): string {
+  const override = p.roles["terminal-bright"]?.[slot];
+  if (override) return p.palette[override];
+  return raiseL(resolve(p, "terminal", slot), ANSI_BRIGHT_L);
+}
+
+/** Resolve um role (ex: "syntax.keyword") para o hex final. */
+export function resolve(p: PaletteFile, group: RoleGroup, role: string): string {
+  const token = p.roles[group][role];
+  if (!token) throw new Error(`role desconhecido: ${group}.${role}`);
+  return p.palette[token];
+}
+
+/** Hex + alpha (0-1) -> #rrggbbaa. Útil para overlays do workbench. */
+export function alpha(hex: string, a: number): string {
+  if (!HEX_RE.test(hex)) throw new Error(`alpha(): "${hex}" não é #rrggbb`);
+  const byte = Math.round(clamp01(a) * 255).toString(16).padStart(2, "0");
+  return hex + byte;
+}
+
+/** Prende um número em [0,1]. Sem isto, alpha e lighten emitem hex inválido. */
+function clamp01(n: number): number {
+  return Math.max(0, Math.min(1, n));
+}
+
+/**
+ * Clareia um hex puxando cada canal em direção ao branco.
+ * Derivar assim NÃO fura a regra do hex hardcoded: a cor de origem
+ * continua vindo da palette — isto é só uma transformação dela.
+ * Usado para os "bright" do terminal e para microajustes de UI.
+ */
+export function lighten(hex: string, amount: number): string {
+  if (!HEX_RE.test(hex)) throw new Error(`lighten(): "${hex}" não é #rrggbb`);
+  const a = clamp01(amount);
+  const canais = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16);
+    return Math.round(c + (255 - c) * a);
+  });
+  return "#" + canais.map((c) => c.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Escurece um hex puxando cada canal em direção ao preto — o espelho de
+ * lighten(), com a mesma justificativa: transformação de um token da
+ * palette, não hex hardcoded. Usado pelos fundos extras do Base24.
+ */
+export function darken(hex: string, amount: number): string {
+  if (!HEX_RE.test(hex)) throw new Error(`darken(): "${hex}" não é #rrggbb`);
+  const a = clamp01(amount);
+  const canais = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16);
+    return Math.round(c * (1 - a));
+  });
+  return "#" + canais.map((c) => c.toString(16).padStart(2, "0")).join("");
+}
+
+// ------------------------------------------------------------
+// OKLCH — usado pelos "bright" do terminal (raiseL) e pelos geradores que
+// precisam de um degrau perceptual em vez de uma mistura com branco/preto.
+// ------------------------------------------------------------
+
+type V3 = [number, number, number];
+
+function paraLinear(c: number): number {
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+function paraSrgb(c: number): number {
+  return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+}
+
+function linearParaOklab([r, g, b]: V3): V3 {
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ];
+}
+
+function oklabParaLinear([L, a, b]: V3): V3 {
+  const l = Math.pow(L + 0.3963377774 * a + 0.2158037573 * b, 3);
+  const m = Math.pow(L - 0.1055613458 * a - 0.0638541728 * b, 3);
+  const s = Math.pow(L - 0.0894841775 * a - 1.291485548 * b, 3);
+  return [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ];
+}
+
+/** #rrggbb -> [L, C, h] em OKLCH (h em graus). */
+export function toOklch(hex: string): V3 {
+  if (!HEX_RE.test(hex)) throw new Error(`toOklch(): "${hex}" não é #rrggbb`);
+  const [L, a, b] = linearParaOklab(canais(hex).map((c) => paraLinear(c / 255)) as V3);
+  const h = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
+  return [L, Math.hypot(a, b), h];
+}
+
+/**
+ * [L, C, h] -> #rrggbb. Fora do gamut sRGB, reduz o croma até caber —
+ * preserva luminosidade e matiz, que são o que a escada da palette protege.
+ */
+export function fromOklch(L: number, C: number, h: number): string {
+  const rad = (h * Math.PI) / 180;
+  let croma = C;
+  let lin = oklabParaLinear([L, croma * Math.cos(rad), croma * Math.sin(rad)]);
+  while (croma > 0 && lin.some((v) => v < -1e-4 || v > 1 + 1e-4)) {
+    croma = Math.max(0, croma - 0.002);
+    lin = oklabParaLinear([L, croma * Math.cos(rad), croma * Math.sin(rad)]);
+  }
+  return (
+    "#" +
+    lin
+      .map((v) => Math.round(clamp01(paraSrgb(clamp01(v))) * 255).toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+
+/** Sobe a luminosidade OKLCH em `dL`, mantendo matiz e croma (com ajuste de gamut). */
+export function raiseL(hex: string, dL: number): string {
+  const [L, C, h] = toOklch(hex);
+  return fromOklch(Math.min(1, L + dL), C, h);
+}

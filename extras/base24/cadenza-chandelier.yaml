@@ -1,0 +1,32 @@
+# Gerado por src/generators/base24.ts a partir de palette/ (Cadenza).
+# NÃO editar à mão — rode `npm run build`.
+system: "base24"
+name: "Cadenza Chandelier"
+slug: "cadenza-chandelier"
+author: "muowl"
+variant: "dark"
+palette:
+  base00: "#080a0b" # fundo do editor (bg0)
+  base01: "#0e1112" # superfícies elevadas, widgets (bg1)
+  base02: "#0c2b34" # seleção de texto (selection)
+  base03: "#81878a" # comentários (muted)
+  base04: "#a7acad" # texto secundário (fg1)
+  base05: "#e8eced" # texto principal (fg0)
+  base06: "#eef1f2" # texto claro (fg0 clareado)
+  base07: "#f4f6f6" # branco mais claro (fg0 clareado)
+  base08: "#f05252" # red — a assinatura (scarlet, jaqueta)
+  base09: "#fab048" # orange — âmbar (warning)
+  base0A: "#eecf84" # yellow — dourado do microfone (gold)
+  base0B: "#a4ce6c" # green — anel limão do medalhão (success)
+  base0C: "#8bdacf" # cyan — jade dos brincos (jade)
+  base0D: "#80a7f0" # blue — borda azul do CD (info)
+  base0E: "#c775c9" # magenta — orquídea do medalhão (orchid)
+  base0F: "#f05252" # deprecated — o vermelho coral (error)
+  base10: "#070909" # fundo mais escuro (bg0 escurecido)
+  base11: "#060708" # fundo mais escuro ainda (bg0 escurecido)
+  base12: "#ff8781" # bright red (ANSI bright)
+  base13: "#fff2d5" # bright yellow (ANSI bright)
+  base14: "#c4ef8c" # bright green (ANSI bright)
+  base15: "#abfbf0" # bright cyan (ANSI bright)
+  base16: "#aac8fe" # bright blue (ANSI bright)
+  base17: "#e894ea" # bright magenta (ANSI bright)

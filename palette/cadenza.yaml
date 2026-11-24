@@ -1,0 +1,165 @@
+# ============================================================
+# FONTE DA VERDADE do tema Cadenza.
+# Todos os geradores (VS Code, Base24, kitty, Hyprland, Waybar…)
+# leem SÓ este arquivo (e os overlays de variante ao lado dele).
+# Nenhum gerador pode conter hex hardcoded.
+#
+# Direção: estrutura da Vercel (Geist), cor da Astra Yao.
+#   - Fundo quase preto, interface em três cinzas (texto principal,
+#     secundário, discreto) — a hierarquia da paleta de terminal da Vercel.
+#   - Cor fica reservada para a sintaxe e para poucos sinais de UI.
+#   - O vermelho da jaqueta é a assinatura. Coincidência útil: o matiz
+#     dele (h 24 em OKLCH) é praticamente o mesmo do vermelho da Geist
+#     (#e5484d, h 23) — a ponte entre as duas referências já existia.
+#
+# Valores pensados em OKLCH (L = luminosidade, C = croma, h = matiz).
+# Os comentários registram o L·C·h de cada token para ajustes futuros.
+# ============================================================
+
+meta:
+  name: "Cadenza"
+  slug: "cadenza"
+  variant: "dark"
+  author: "muowl"
+  description: "Tema escuro quase preto: estrutura da Vercel, cores da Astra Yao (Zenless Zone Zero)."
+
+# ------------------------------------------------------------
+# ÂNCORAS: cores brutas da personagem, amostradas das artes oficiais
+# (references/, fora do git). NÃO são consumidas pelos geradores.
+# Medianas por região; L·C·h em OKLCH.
+# ------------------------------------------------------------
+anchors:
+  jacket: "#b3232c"       # jaqueta vermelha, luz média      L .50 C .18 h 24
+  jacket-shadow: "#711b21" # jaqueta na sombra                L .37 C .12 h 22
+  hair-ink: "#101e23"     # cabelo, quase preto azul-petróleo L .23 C .02 h 222
+  hair-light: "#92bbb9"   # reflexo do cabelo no pôster       L .76 C .04 h 193
+  earring: "#8ecdc3"      # brincos de jade                   L .80 C .07 h 184
+  mic-gold: "#bfa15d"     # dourado do microfone              L .72 C .09 h 86
+  mic-gold-light: "#f4df90" # brilho do dourado               L .90 C .10 h 95
+  dress-shade: "#9099b2"  # sombra lavanda do vestido branco  L .68 C .04 h 270
+  pearl: "#f3f5f8"        # pérolas do colar                  L .97 C .01 h 258
+  medallion: "#b65d94"    # centro magenta do medalhão        L .60 C .13 h 344
+  medallion-ring: "#bac785" # anel verde-limão do medalhão    L .80 C .09 h 118
+  disc: "#a576c3"         # CD violeta preso ao microfone     L .64 C .12 h 311
+  disc-rim: "#3b56c6"     # borda azul do CD                  L .50 C .18 h 269
+
+# ------------------------------------------------------------
+# PALETA: tokens nomeados que os geradores enxergam.
+# ------------------------------------------------------------
+palette:
+  # Fundos — quase preto com um sussurro do matiz do cabelo (h 222, C ≤ .007).
+  # Lê como neutro; o croma só impede o cinza "morto" de puxar para o verde.
+  # Estrutura plana à la Vercel: editor e chrome no MESMO fundo, separados
+  # por bordas finas (bg3), não por chapas de cinza.
+  bg0: "#0d0f10"        # L .167 — editor, sidebar, abas, status bar, painel
+  bg1: "#131517"        # L .194 — widgets flutuantes (autocomplete, hover, menus)
+  bg2: "#1b1f20"        # L .236 — hover, item ativo em listas, inputs
+  bg3: "#2a2f30"        # L .301 — bordas, separadores, guias de indentação
+  selection: "#0c2b34"  # L .271 C .040 h 220 — seleção azul-petróleo do cabelo.
+                        # Comentário mantém 4.09:1 por cima; sintaxe preservada.
+
+  # ESCADA DE LUMINOSIDADE — a ordem de L é o que separa as cores para quem
+  # tem daltonismo vermelho-verde (o eixo a* some, sobram L e b*).
+  # Medida pelo check_cvd: o par mais apertado da sintaxe fica em ΔE 7.9.
+  # Ao mexer, preserve o matiz e confira o degrau de L.
+
+  # Texto — os três cinzas da Vercel (#ededed / #a0a0a0 / #8f8f8f), com
+  # mais distância entre secundário e discreto para comentário não virar
+  # pontuação.
+  fg0: "#e8eced"        # L .940 — texto principal, variáveis, propriedades
+  fg1: "#a7acad"        # L .741 — texto secundário, operadores, pontuação
+  muted: "#81878a"      # L .619 — comentários, números de linha. Subiu de
+                        # L .56 para .62: sob protanopia o scarlet escurece
+                        # para L ~.56 e colava no comentário (ΔE 5.7).
+
+  # Cores de identidade — cinco matizes, todos da arte
+  scarlet: "#f05252"    # L .655 C .194 h 24 — jaqueta. A assinatura:
+                        # palavras-chave, tags, cursor, aba ativa. Usar pouco.
+  orchid: "#c775c9"     # L .681 C .149 h 326 — medalhão/CD. Números,
+                        # constantes, decorators. Saiu do rosa (h 352) para
+                        # o orquídea: sob deuteranopia o rosa virava o cinza
+                        # da pontuação (ΔE 2.0).
+  lilac: "#a5b5eb"      # L .780 C .079 h 272 — sombra lavanda do vestido.
+                        # Tipos, classes, componentes, namespaces.
+  jade: "#8bdacf"       # L .834 C .080 h 184 — brincos e reflexo do cabelo.
+                        # Funções e atributos (atributo leva itálico).
+  gold: "#eecf84"       # L .864 C .100 h 88 — microfone. Strings.
+
+  # Estados (diagnósticos, git, diffs). Colidem com alguns tokens de
+  # sintaxe sob daltonismo, e isso é aceito: sempre aparecem com fundo
+  # tingido, sublinhado ou marcador de gutter reforçando.
+  error: "#f76e52"      # L .700 C .174 h 33 — vermelho mais coral que o
+                        # scarlet, para erro não ser confundido com keyword
+  warning: "#fab048"    # L .810 C .145 h 72 — âmbar, mais laranja que o gold
+  info: "#80a7f0"       # L .729 C .115 h 262 — azul da borda do CD
+  success: "#a4ce6c"    # L .799 C .135 h 128 — anel verde-limão do medalhão
+
+# ------------------------------------------------------------
+# ROLES: mapeamento semântico. Valores referenciam nomes da paleta.
+# É AQUI que se decide "keyword é scarlet", não no gerador.
+# ------------------------------------------------------------
+roles:
+  syntax:
+    # Vermelho só para CONTROLE DE FLUXO e módulos: if, return, import,
+    # export, await, throw. Declarações (const, let, function, class,
+    # interface, type, =>, async, public) ficam no cinza da pontuação: o
+    # nome declarado é o que importa ler, e a contenção da direção Vercel
+    # pede o scarlet escasso. Para o visual clássico "toda keyword vermelha",
+    # troque `storage: fg1` por `storage: scarlet` — é uma linha.
+    keyword: scarlet
+    storage: fg1
+    string: gold
+    function: jade
+    number: orchid
+    constant: orchid      # true, null, CONSTANTES
+    type: lilac           # classes, interfaces, componentes JSX
+    variable: fg0
+    property: fg0
+    parameter: fg0        # itálico distingue de variável
+    comment: muted
+    operator: fg1
+    punctuation: fg1
+    tag: scarlet          # tags HTML/JSX: mesma família da keyword
+    attribute: jade       # atributos HTML/JSX, em itálico. Jade e não lilac:
+                          # <Botao onClick=…> põe tipo e atributo lado a lado
+    regexp: orchid
+    escape: orchid        # \n, \t dentro de strings douradas
+    builtin: scarlet      # this, self, super
+    namespace: lilac
+    decorator: orchid
+    interpolation: orchid # as marcas ${ } dentro de template strings
+    inserted: success
+    deleted: error
+    changed: warning
+    quote: muted
+
+  ui:
+    accent: scarlet       # cursor, aba ativa, badges, foco, progresso
+    cursor: scarlet
+    link: info
+    # Caracteres casados no quick open / autocomplete. Jade passa folgado
+    # em todos os fundos de lista e deixa o vermelho escasso.
+    list-highlight: jade
+    terminal-bg: bg0
+    # Desktop (Hyprland, Waybar): borda da janela ativa e alerta.
+    border-active: scarlet
+    border-inactive: bg3
+    urgent: error
+
+  # Os 16 slots ANSI. Só as 8 bases são decididas aqui: o gerador deriva
+  # cada "bright" subindo +0.10 de L em OKLCH com o mesmo matiz e croma —
+  # o método da paleta de terminal da Vercel (ver ANSI_BRIGHT_L).
+  terminal:
+    black: bg3
+    red: scarlet
+    green: success
+    yellow: gold
+    blue: info
+    magenta: orchid
+    cyan: jade
+    white: fg1
+
+  # bright-black não é chapa: é o cinza que CLIs usam para texto esmaecido
+  # (dicas do git, sugestões do fish/zsh). Aponta para o muted.
+  terminal-bright:
+    black: muted

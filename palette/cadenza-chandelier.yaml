@@ -1,0 +1,47 @@
+# ============================================================
+# VARIANTE "Cadenza Chandelier" — a roupa preta e branca da Astra
+# (skin Chandelier). O vermelho da jaqueta sai; o bronze das fitas
+# assume como acento.
+#
+# Isto é um OVERLAY: só o que muda. Todo o resto (texto, os outros
+# acentos, âncoras, roles não citados) vem de cadenza.yaml — ver
+# loadPaletteVariant em src/lib/palette.ts. Os três gates rodam nesta
+# variante igual à base.
+#
+# Para quem: quem quer o Cadenza sem vermelho na sintaxe. Aqui o
+# vermelho sobra para UMA coisa só — erro — e por isso pesa mais.
+# ============================================================
+
+meta:
+  name: "Cadenza Chandelier"
+  slug: "cadenza-chandelier"
+  variant: "dark"
+  author: "muowl"
+  description: "Variante sem vermelho na sintaxe: fundo mais escuro (o vestido preto) e bronze como acento."
+
+palette:
+  # Fundos um degrau mais escuros (L .145 no editor, perto do #0a0a0a da
+  # Vercel). A seleção não muda: o comentário continua a 4.09:1 sobre ela.
+  bg0: "#080a0b"        # L .145
+  bg1: "#0e1112"        # L .175
+  bg2: "#171a1b"        # L .215
+  bg3: "#272b2d"        # L .285
+
+  # Bronze das fitas (âncora #a78464, h 64), clareado para leitura:
+  # L .74 C .09 h 62 — 8.43:1 no fundo. Mesma L do fg1, separado dele pelo
+  # croma: ΔE 8.4 no pior caso de daltonismo.
+  bronze: "#d49e6f"
+
+  # Erro vira o próprio vermelho da jaqueta: é o único vermelho da variante.
+  # O coral da base ficava a ΔE 4.1 do bronze sob deuteranopia.
+  error: "#f05252"
+
+roles:
+  syntax:
+    keyword: bronze
+    tag: bronze
+    builtin: bronze
+  ui:
+    accent: bronze
+    cursor: bronze
+    border-active: bronze

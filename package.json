@@ -2,7 +2,7 @@
   "name": "cadenza-theme",
   "displayName": "Cadenza",
   "description": "A near-black theme with Vercel's restraint and the colors of Astra Yao: scarlet, gold, jade and lilac. Fan-made and unaffiliated with HoYoverse; inspired by Astra Yao from Zenless Zone Zero.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "muowl",
   "license": "MIT",
   "icon": "assets/logo.png",
@@ -30,6 +30,9 @@
     "minimal",
     "vercel",
     "red",
+    "rust",
+    "python",
+    "typescript",
     "kitty",
     "hyprland"
   ],
@@ -55,7 +58,8 @@
     "package": "npx --yes @vscode/vsce package",
     "publish:vsce": "npx --yes @vscode/vsce publish",
     "publish:ovsx": "npx --yes ovsx publish",
-    "preview": "tsx scripts/preview.ts"
+    "preview": "tsx scripts/preview.ts",
+    "inspect": "tsx scripts/inspect.ts"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",

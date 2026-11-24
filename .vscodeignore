@@ -18,3 +18,4 @@ tsconfig.json
 *.vsix
 assets/*.svg
 assets/preview-*.png
+assets/languages-*.png

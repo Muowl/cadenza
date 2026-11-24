@@ -23,16 +23,40 @@ with **Preferences: Color Theme** (`Ctrl+K Ctrl+T`).
 
 ## Two variants
 
-**Cadenza** — the default. Scarlet marks control flow (`if`, `return`,
-`import`, `export`), tags, the cursor, the active tab and badges. Declarations
-(`const`, `function`, `class`, `=>`) stay in the punctuation grey, so the name
-being declared is what you read first.
+**Cadenza** — the default. Scarlet marks control flow (`if`, `for`,
+`match`, `return`, `throw`, `await`), tags, the cursor, the active tab and
+badges. Everything else that is a reserved word — declarations (`const`, `fn`,
+`def`, `class`, `=>`), modifiers (`pub`, `public`, `static`) and module
+statements (`import`, `use`, `using`, `#include`) — stays in the punctuation
+grey, so the name being declared is what you read first. `self` and `this` are
+grey italic.
 
 **Cadenza Chandelier** — the black-and-white outfit. The background drops a
 step (close to Vercel's `#0a0a0a`) and bronze replaces scarlet everywhere. The
 only red left is for errors, so errors are the one thing that stands out.
 
 ![Cadenza Chandelier](assets/preview-cadenza-chandelier.png)
+
+## Languages
+
+Checked against the grammars VS Code ships for Rust, TypeScript, Python, Java,
+C#, C and C++, and against the semantic tokens their language servers send
+(rust-analyzer, the TypeScript server, Pylance, the Java language server,
+Roslyn, clangd and the Microsoft C/C++ extension). The same rules hold in every
+language: red for control flow, grey for the rest of the keywords, orchid for
+literals and metaprogramming (`@decorator`, `@Annotation`, `#[attribute]`,
+`[[attribute]]`, C macros), lilac for types, jade for functions.
+
+Where a language server can only tell control-flow keywords apart from the rest
+(rust-analyzer, Roslyn), the theme follows its split. In C#, `int`, `string`,
+`true` and `null` are plain keywords to Roslyn, so they are grey too.
+rust-analyzer's underline for `mut` bindings is kept.
+
+![Cadenza across languages](assets/languages-cadenza.png)
+
+The screenshots show grammar-based highlighting only. With a language server
+running, types, constants and macros get more precise (`Optional`, `MAX_ENCORES`
+and enum members pick up their colours).
 
 ## Palette
 
@@ -77,7 +101,11 @@ the jacket and the design system already agreed.
   same hue and chroma.
 - **Full workbench coverage.** ~380 UI colours, including merge conflicts,
   IntelliSense icons and the debug console, so no stock blue leaks in.
-- **Restrained italics.** Comments, parameters and HTML/JSX attributes only.
+- **Checked tokenization.** The build tokenizes sample files with VS Code's own
+  engine and grammars (117 cases) and simulates the semantic-token chain for
+  each language server above (37 cases). A colour that drifts fails the build.
+- **Restrained italics.** Comments, parameters, `self`/`this` and HTML/JSX
+  attributes only.
 
 ## Beyond VS Code
 
@@ -96,13 +124,19 @@ Colour names are identical across variants: switch to Chandelier by sourcing
 
 ## Customizing
 
-Want every keyword red? Override the declaration colour in `settings.json`:
+Want every keyword red? Override the grey keyword scopes in `settings.json`.
+The list includes the scopes rust-analyzer and Roslyn fall back to, so it also
+holds with a language server running:
 
 ```jsonc
 "editor.tokenColorCustomizations": {
   "[Cadenza]": {
     "textMateRules": [
-      { "scope": ["storage.type", "storage.modifier"], "settings": { "foreground": "#f05252" } }
+      {
+        "scope": ["storage.type", "storage.modifier", "keyword.other", "keyword.cs",
+                  "keyword.control.import", "keyword.control.export", "keyword.control.from"],
+        "settings": { "foreground": "#f05252" }
+      }
     ]
   }
 }
@@ -114,6 +148,7 @@ Want every keyword red? Override the declaration colour in `settings.json`:
 npm install
 npm run build     # checks contrast, colour-blindness and tokenization, then generates themes/, extras/ and assets/
 npm run preview   # renders the README screenshots
+npm run inspect -- sample.rs   # shows which palette colour each token gets
 npm run package   # builds the .vsix
 ```
 

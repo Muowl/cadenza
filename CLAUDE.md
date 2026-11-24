@@ -64,9 +64,16 @@ python scripts/extract_colors.py references/*.webp --colors 12
 - Fundo `bg0` quase preto com croma ≤ .007 no matiz do cabelo (h 222). Lê
   como neutro. Editor e chrome no mesmo fundo; `bg3` desenha as bordas; só o
   que flutua (widgets, menus, inputs) sobe para `bg1`.
-- `scarlet` é a assinatura e é escasso: controle de fluxo, tags, cursor, aba
-  ativa, badges, foco. Declarações (`storage`) ficam em `fg1`. Botão primário
-  é branco (`fg0`), não vermelho. Indicador da activity bar e do painel: `fg0`.
+- `scarlet` é a assinatura e é escasso: SÓ fluxo de controle (if, for, match,
+  return, throw, await, yield, #if), tags, cursor, aba ativa, badges, foco.
+  Toda outra palavra reservada — declaração, modificador, import/use/using/
+  #include — fica em `fg1` (`storage`). É a fronteira que o rust-analyzer
+  (`keyword.controlFlow`) e o Roslyn (`controlKeyword`) usam; nunca criar
+  regra semântica genérica para `keyword`.
+- `self`/`this`/`cls` (`builtin`) em `fg1` itálico. Metaprogramação
+  (decorator, anotação, atributo Rust/C++, macro de C) em `orchid`.
+- Botão primário é branco (`fg0`), não vermelho. Indicador da activity bar e
+  do painel: `fg0`.
 - `variable.other.constant` em declaração (`const x`) e o semântico
   `variable.readonly` vão para `variable` — orquídea fica para literais e
   CONSTANTES.
@@ -76,4 +83,21 @@ python scripts/extract_colors.py references/*.webp --colors 12
 - `npm run check` falha o build em três frentes: contraste WCAG (sintaxe,
   terminal, pares de UI lidos do tema gerado, seleção, chapas compostas),
   separação sob protanopia/deuteranopia (`check_cvd.ts`, ΔE ≥ 6 e pares
-  nomeados) e tokenização real (`check_tokens.ts`).
+  nomeados) e tokenização (`check_tokens.ts`: casos TextMate nos fixtures de
+  `tests/fixtures/` + simulação da cadeia semântica do VS Code).
+
+## Tokens semânticos
+
+Com servidor de linguagem ativo, o VS Code aplica primeiro `semanticTokenColors`
+do tema (pontuação: +100 tipo, +100 por modificador, +10 linguagem; empate vai
+para a regra definida por último) e preenche o que faltar com o
+`semanticTokenScopes` da extensão — um escopo TextMate avulso, resolvido SEM
+ancestrais. Consequências práticas:
+
+- regra TextMate com seletor de ancestral (`comment keyword`) não vale para
+  fallback semântico; o escopo avulso precisa de regra própria
+  (ex.: `keyword.other.documentation`);
+- para descobrir o escopo de fallback, ler `contributes.semanticTokenScopes` no
+  package.json da extensão (rust-analyzer, vscode-csharp, vscode-java,
+  vscode-cpptools) e registrar o caso em `casosSemanticos`;
+- `npm run inspect -- <fixture>` mostra a cor de cada token pelo nome.

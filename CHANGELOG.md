@@ -3,6 +3,59 @@
 Todas as mudanças relevantes do Cadenza ficam registradas aqui.
 O projeto segue [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] — 2026-11-24
+
+Revisão por linguagem: Rust, TypeScript, Python, Java, C#, C e C++, nas
+gramáticas do VS Code e nos tokens semânticos dos servidores de linguagem.
+
+### Changed
+
+- **Scarlet só para fluxo de controle.** Imports e módulos (`import`, `export`,
+  `use`, `using`, `package`, `#include`) passam para o cinza das declarações.
+  Motivo: o rust-analyzer e o Roslyn só distinguem fluxo de controle do resto,
+  então com o servidor ativo os imports já ficavam cinza nessas linguagens; agora
+  é igual em todas.
+- `self`, `this` e `cls` em cinza itálico (eram scarlet): aparecem em quase toda
+  linha de Python e Rust e apagavam o sinal do fluxo de controle.
+- Removida a regra semântica `keyword → scarlet`, que pintava de vermelho toda
+  palavra reservada de Rust e C# (`fn`, `let`, `pub`, `public`, `int`, `true`…)
+  quando o servidor de linguagem carregava.
+- `readonly` deixa de significar constante: no TS (toda `const`), no Java
+  (`final`) e no C++ (`const` local) volta a ser variável. Orquídea fica para
+  constantes de verdade: estáticas, globais, de biblioteca, `Final` do Python.
+
+### Fixed
+
+- C#: `int`, `string`, `double` saíam em scarlet (`keyword.type.cs`); tags XML
+  de `///` saíam em scarlet dentro do comentário; `await` saía cinza.
+- Java: anotações (`@Override`) sem cor; `new` e o `?` do ternário em scarlet;
+  `@param` em scarlet.
+- C/C++: `#include`/`#define`, `typedef`, `concept`, `requires` e `= default` em
+  scarlet; `std::` e `[[nodiscard]]` sem cor. `#if`/`#ifdef` continuam em
+  scarlet (compilação condicional é fluxo de controle).
+- Rust: `fn`, `impl`, `async` em scarlet; `u32`/`usize` cinza em algumas
+  posições; ponto de `3.5` cinza no meio do número; `#[derive]` sem cor;
+  `{}` de formatação sem a cor de interpolação.
+- Python: `f`/`r` de string cinza; `:.0f` cinza; grupo nomeado de regex em
+  scarlet; constantes em CAIXA ALTA sem cor; chamadas `field(...)` sem cor.
+- TypeScript: `@decorator` com o nome sem cor; flag de regex (`/u`) cinza;
+  âncoras de regex (`^`, `$`) em scarlet.
+
+### Added
+
+- Metaprogramação com uma cor (orquídea) em todas as linguagens: decorators,
+  anotações, atributos de Rust e C++, macros de C/C++.
+- Lifetimes do Rust em lilás itálico; variáveis `mut` sublinhadas (o escopo que
+  o rust-analyzer usa para isso agora tem estilo).
+- Tags de documentação (`@param`, `<summary>`, nomes no JSDoc) em `doctag`: um
+  degrau acima do comentário.
+- Regras semânticas para rust-analyzer, Roslyn, jdt.ls, clangd/cpptools e
+  Pylance (`selfParameter`, `module`, `*.decorator`, `lifetime`, `macro`…).
+- Gate: 76 casos novos de tokenização nas seis linguagens e 37 casos que
+  simulam a cadeia semântica do VS Code (regras do tema → `semanticTokenScopes`
+  de cada extensão). Gramáticas novas vendorizadas de `microsoft/vscode`.
+- `assets/languages-*.png` (galeria por linguagem) e `npm run inspect`.
+
 ## [0.1.0] — 2026-11-24
 
 Primeira versão.

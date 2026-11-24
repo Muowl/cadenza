@@ -39,14 +39,15 @@
     "attribute": "#8bdacf",
     "regexp": "#c775c9",
     "escape": "#c775c9",
-    "builtin": "#f05252",
+    "builtin": "#a7acad",
     "namespace": "#a5b5eb",
     "decorator": "#c775c9",
     "interpolation": "#c775c9",
     "inserted": "#a4ce6c",
     "deleted": "#f76e52",
     "changed": "#fab048",
-    "quote": "#81878a"
+    "quote": "#81878a",
+    "doctag": "#a7acad"
   },
   "ui": {
     "accent": "#f05252",

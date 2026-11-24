@@ -13,6 +13,18 @@ editor. **Não editar à mão** — para atualizar, baixe de novo do repositóri
 | `html.tmLanguage.json` | `extensions/html/syntaxes/` |
 | `html-derivative.tmLanguage.json` | `extensions/html/syntaxes/` |
 | `TypeScriptReact.tmLanguage.json` | `extensions/typescript-basics/syntaxes/` |
+| `TypeScript.tmLanguage.json` | `extensions/typescript-basics/syntaxes/` |
+| `rust.tmLanguage.json` | `extensions/rust/syntaxes/` |
+| `java.tmLanguage.json` | `extensions/java/syntaxes/` |
+| `c.tmLanguage.json` | `extensions/cpp/syntaxes/` |
+| `cpp.tmLanguage.json` | `extensions/cpp/syntaxes/` |
+| `cpp.embedded.macro.tmLanguage.json` | `extensions/cpp/syntaxes/` (incluída pelo C++) |
+| `csharp.tmLanguage.json` | `extensions/csharp/syntaxes/` |
+| `MagicPython.tmLanguage.json` | `extensions/python/syntaxes/` |
+| `MagicRegExp.tmLanguage.json` | `extensions/python/syntaxes/` (regex do Python e raw strings do C++) |
+
+As gramáticas de linguagens de programação vieram do commit `679e1ca` de
+`microsoft/vscode` (24/11/2026).
 
 Licença: MIT (VS Code); cada gramática mantém a licença do projeto upstream
 de onde o VS Code a importa. Uso aqui é somente para teste.

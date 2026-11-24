@@ -20,6 +20,15 @@ export const GRAMATICAS: Record<string, string> = {
   "text.html.basic": "html.tmLanguage.json",
   "text.html.derivative": "html-derivative.tmLanguage.json",
   "source.tsx": "TypeScriptReact.tmLanguage.json",
+  "source.ts": "TypeScript.tmLanguage.json",
+  "source.rust": "rust.tmLanguage.json",
+  "source.java": "java.tmLanguage.json",
+  "source.c": "c.tmLanguage.json",
+  "source.cpp": "cpp.tmLanguage.json",
+  "source.cpp.embedded.macro": "cpp.embedded.macro.tmLanguage.json",
+  "source.cs": "csharp.tmLanguage.json",
+  "source.python": "MagicPython.tmLanguage.json",
+  "source.regexp.python": "MagicRegExp.tmLanguage.json",
 };
 
 export const ESCOPO_POR_EXTENSAO: Record<string, string> = {
@@ -28,6 +37,13 @@ export const ESCOPO_POR_EXTENSAO: Record<string, string> = {
   scss: "source.css.scss",
   html: "text.html.derivative",
   tsx: "source.tsx",
+  ts: "source.ts",
+  rs: "source.rust",
+  java: "source.java",
+  c: "source.c",
+  cpp: "source.cpp",
+  cs: "source.cs",
+  py: "source.python",
 };
 
 // Máscaras de metadata do vscode-textmate (MetadataConsts). O itálico é o
@@ -37,6 +53,7 @@ const FONT_STYLE_OFFSET = 11;
 const FOREGROUND_MASK = 0b00000000_11111111_10000000_00000000;
 const FOREGROUND_OFFSET = 15;
 const ITALICO = 1;
+const SUBLINHADO = 4;
 
 // O WASM do oniguruma só pode ser inicializado uma vez por processo — o
 // registry, porém, é um por paleta (setTheme muda o colorMap inteiro).
@@ -104,6 +121,39 @@ export function tokenizaArquivo(
       });
     }
     resultado.push(tokens);
+  }
+  return resultado;
+}
+
+/**
+ * Resolve escopos SOLTOS contra o tema, sem ancestrais — como o VS Code faz
+ * com o escopo de fallback de um token semântico (semanticTokenScopes):
+ * monta uma gramática descartável que dá a cada palavra-sonda um escopo.
+ */
+export async function pintaEscopos(
+  registry: vsctm.Registry,
+  escopos: string[]
+): Promise<{ cor: string; italico: boolean; sublinhado: boolean }[]> {
+  const sonda = escopos.map((_, i) => `SONDA${i}`);
+  const grammar = await registry.addGrammar({
+    scopeName: `source.sonda.${Date.now()}.${Math.random().toString(36).slice(2)}`,
+    patterns: escopos.map((name, i) => ({ match: `\\b${sonda[i]}\\b`, name })),
+  } as unknown as vsctm.IRawGrammar);
+  const linha = sonda.join(" ");
+  const r = grammar.tokenizeLine2(linha, vsctm.INITIAL);
+  const mapaCores = registry.getColorMap();
+  const resultado: { cor: string; italico: boolean; sublinhado: boolean }[] = [];
+  for (let i = 0; i < r.tokens.length; i += 2) {
+    const inicio = r.tokens[i];
+    const meta = r.tokens[i + 1];
+    const idx = sonda.findIndex((s) => linha.startsWith(s, inicio));
+    if (idx < 0) continue;
+    const estilo = (meta & FONT_STYLE_MASK) >>> FONT_STYLE_OFFSET;
+    resultado[idx] = {
+      cor: mapaCores[(meta & FOREGROUND_MASK) >>> FOREGROUND_OFFSET].toLowerCase(),
+      italico: (estilo & ITALICO) !== 0,
+      sublinhado: (estilo & SUBLINHADO) !== 0,
+    };
   }
   return resultado;
 }

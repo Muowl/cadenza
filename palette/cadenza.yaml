@@ -74,7 +74,7 @@ palette:
 
   # Cores de identidade — cinco matizes, todos da arte
   scarlet: "#f05252"    # L .655 C .194 h 24 — jaqueta. A assinatura:
-                        # palavras-chave, tags, cursor, aba ativa. Usar pouco.
+                        # fluxo de controle, tags, cursor, aba ativa. Usar pouco.
   orchid: "#c775c9"     # L .681 C .149 h 326 — medalhão/CD. Números,
                         # constantes, decorators. Saiu do rosa (h 352) para
                         # o orquídea: sob deuteranopia o rosa virava o cinza
@@ -100,12 +100,18 @@ palette:
 # ------------------------------------------------------------
 roles:
   syntax:
-    # Vermelho só para CONTROLE DE FLUXO e módulos: if, return, import,
-    # export, await, throw. Declarações (const, let, function, class,
-    # interface, type, =>, async, public) ficam no cinza da pontuação: o
-    # nome declarado é o que importa ler, e a contenção da direção Vercel
-    # pede o scarlet escasso. Para o visual clássico "toda keyword vermelha",
-    # troque `storage: fg1` por `storage: scarlet` — é uma linha.
+    # Vermelho só para CONTROLE DE FLUXO: if, else, for, while, match,
+    # switch, return, break, continue, throw, try/catch, await, yield.
+    # Todo o resto que é palavra reservada — declarações (const, fn, def,
+    # class, interface, =>), modificadores (pub, public, static, async) e
+    # módulos (import, export, use, using, package, #include) — fica no
+    # cinza da pontuação: o nome declarado é o que importa ler.
+    #
+    # A fronteira é a mesma que os servidores de linguagem usam: o
+    # rust-analyzer marca `keyword.controlFlow` e o Roslyn (C#) separa
+    # `controlKeyword` de `keyword`. Com o servidor ativo, só essa divisão
+    # sobrevive — por isso imports também ficam cinza, em todas as
+    # linguagens, em vez de vermelhos em umas e cinza em outras.
     keyword: scarlet
     storage: fg1
     string: gold
@@ -124,7 +130,9 @@ roles:
                           # <Botao onClick=…> põe tipo e atributo lado a lado
     regexp: orchid
     escape: orchid        # \n, \t dentro de strings douradas
-    builtin: scarlet      # this, self, super
+    builtin: fg1          # this, self, cls, super — em itálico. Aparece em
+                          # quase toda linha de Python e Rust: vermelho ali
+                          # apagava o sinal do fluxo de controle.
     namespace: lilac
     decorator: orchid
     interpolation: orchid # as marcas ${ } dentro de template strings
@@ -132,6 +140,8 @@ roles:
     deleted: error
     changed: warning
     quote: muted
+    doctag: fg1           # @param, <summary>, nomes no JSDoc: um degrau acima
+                          # do comentário, em itálico
 
   ui:
     accent: scarlet       # cursor, aba ativa, badges, foco, progresso

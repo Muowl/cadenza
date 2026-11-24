@@ -500,6 +500,27 @@ export function generateVscodeTheme(p: PaletteFile): object {
     tokenColors: [
       { scope: ["comment", "punctuation.definition.comment"],
         settings: { foreground: syn("comment"), fontStyle: "italic" } },
+      // Tags de documentação (@param, <summary>, nomes de parâmetro no
+      // JSDoc/Javadoc) um degrau acima do comentário, ainda em itálico —
+      // sem herdar a cor de tag/keyword do código. Os seletores
+      // "comment X" cobrem as gramáticas; comment.documentation.* cobre o
+      // que o Roslyn manda para o XML doc do C#.
+      // O seletor precisa casar tantos segmentos quanto a regra que ele quer
+      // vencer: "comment variable" perde para "variable.parameter", porque o
+      // motor do TextMate decide primeiro pela profundidade no escopo do token
+      // e só depois pelos ancestrais.
+      { scope: ["comment keyword", "comment keyword.other", "comment storage.type",
+                "comment storage.type.class", "comment variable", "comment variable.parameter",
+                "comment variable.other", "comment entity.name", "comment entity.name.tag",
+                "comment entity.name.type", "comment punctuation.definition.tag",
+                "comment punctuation.definition.block.tag",
+                "comment.documentation.name", "comment.documentation.delimiter",
+                "comment.documentation.attribute", "keyword.other.documentation",
+                "storage.type.class.jsdoc"],
+        settings: { foreground: syn("doctag"), fontStyle: "italic" } },
+      // Código desligado por #if (C#): apagado como comentário, sem itálico.
+      { scope: ["support.other.excluded"],
+        settings: { foreground: syn("comment"), fontStyle: "" } },
 
       { scope: ["keyword", "keyword.control"],
         settings: { foreground: syn("keyword") } },
@@ -507,16 +528,53 @@ export function generateVscodeTheme(p: PaletteFile): object {
       // Declarações separadas do controle de fluxo (ver roles.syntax.storage)
       { scope: ["storage.type", "storage.modifier"],
         settings: { foreground: syn("storage") } },
+
+      // Palavras reservadas que NÃO são fluxo de controle vão para o cinza
+      // de storage, mesmo quando a gramática as chama de keyword:
+      //  - módulos: import/export/from/as (TS, Python), import/package
+      //    (Java), use (Rust), using (C#), #include/#define (C/C++);
+      //  - keyword.other em geral: fn/impl/async (Rust), typedef/concept/
+      //    requires/= default (C++), debugger (TS);
+      //  - keyword.cs e keyword.type (C#): é para onde o Roslyn manda toda
+      //    palavra reservada que não é de controle (public, int, var, new…).
+      { scope: ["keyword.control.import", "keyword.control.export", "keyword.control.from",
+                "keyword.control.as", "keyword.control.type.ts", "keyword.control.type.tsx",
+                "keyword.control.default.ts", "keyword.control.default.tsx",
+                "keyword.control.default.js", "keyword.control.default.jsx",
+                "keyword.other", "keyword.cs", "keyword.type", "keyword.generator.asterisk",
+                "keyword.control.directive", "keyword.preprocessor", "keyword.control.new",
+                "keyword.operator.new"],
+        settings: { foreground: syn("storage") } },
+      // ...menos o que é compilação condicional (#if, #ifdef, #else), que é
+      // fluxo de controle em tempo de compilação, e o await do C#, que o
+      // Roslyn classifica como palavra de controle.
+      { scope: ["keyword.control.directive.conditional", "keyword.preprocessor.if",
+                "keyword.preprocessor.elif", "keyword.preprocessor.else",
+                "keyword.preprocessor.endif", "keyword.operator.expression.await"],
+        settings: { foreground: syn("keyword") } },
+      // O Roslyn também manda true/false/null para keyword.cs: o TextMate do
+      // C# segue o mesmo cinza para a cor não trocar quando o servidor carrega.
+      { scope: ["constant.language.null.cs", "constant.language.boolean.true.cs",
+                "constant.language.boolean.false.cs"],
+        settings: { foreground: syn("storage") } },
+      // Ternário do Java vem como keyword.control; é operador.
+      { scope: ["keyword.control.ternary"],
+        settings: { foreground: syn("operator") } },
       // ...mas onde a gramática usa storage.type para TIPOS de verdade
       // (int/float primitivos, tipos em Java), volta a ser tipo.
       { scope: ["storage.type.primitive", "storage.type.java", "storage.type.generic.java",
-                "storage.type.object.array.java", "storage.type.built-in"],
+                "storage.type.object.array.java", "storage.type.built-in",
+                "storage.type.numeric.rust", "storage.type.core.rust"],
         settings: { foreground: syn("type") } },
+      // Prefixo de string (f"…", r"…", b"…") é parte do literal, não storage.
+      { scope: ["storage.type.string.python"],
+        settings: { foreground: syn("string") } },
 
       { scope: ["string", "string.quoted", "punctuation.definition.string"],
         settings: { foreground: syn("string") } },
 
-      { scope: ["constant.numeric"],
+      { scope: ["constant.numeric", "constant.numeric punctuation",
+                "punctuation.separator.dot.decimal", "keyword.other.unit"],
         settings: { foreground: syn("number") } },
 
       { scope: ["constant.language", "constant.character", "variable.other.constant", "support.constant"],
@@ -526,8 +584,18 @@ export function generateVscodeTheme(p: PaletteFile): object {
       // sentido; ela fica para literais e para CONSTANTES_EM_CAIXA_ALTA.
       { scope: ["meta.definition.variable variable.other.constant"],
         settings: { foreground: syn("variable") } },
+      // No TS o servidor marca toda const como readonly e o tema as pinta como
+      // variável (ver semanticTokenColors). O TextMate acompanha, para a
+      // CONSTANTE não piscar orquídea até o servidor carregar.
+      { scope: ["variable.other.constant.ts", "variable.other.constant.tsx",
+                "variable.other.constant.js", "variable.other.constant.jsx"],
+        settings: { foreground: syn("variable") } },
+      { scope: ["constant.other.caps", "entity.name.function.preprocessor",
+                "entity.name.function.macro.c", "entity.name.function.macro.cpp"],
+        settings: { foreground: syn("constant") } },
 
-      { scope: ["entity.name.function", "support.function", "meta.function-call entity.name.function"],
+      { scope: ["entity.name.function", "support.function", "meta.function-call entity.name.function",
+                "meta.function-call.generic.python"],
         settings: { foreground: syn("function") } },
 
       { scope: ["entity.name.type", "entity.name.class", "support.type", "support.class", "entity.other.inherited-class"],
@@ -537,14 +605,32 @@ export function generateVscodeTheme(p: PaletteFile): object {
         settings: { foreground: syn("variable") } },
 
       // this / self / super: variável na gramática, palavra-chave na cabeça de quem lê
-      { scope: ["variable.language"],
-        settings: { foreground: syn("builtin") } },
+      { scope: ["variable.language", "variable.parameter.function.language.special",
+                "variable.language.special"],
+        settings: { foreground: syn("builtin"), fontStyle: "italic" } },
 
-      { scope: ["entity.name.namespace", "entity.name.module", "storage.modifier.package"],
+      { scope: ["entity.name.namespace", "entity.name.module", "storage.modifier.package",
+                "entity.name.scope-resolution"],
         settings: { foreground: syn("namespace") } },
 
-      { scope: ["meta.decorator", "entity.name.function.decorator", "punctuation.decorator"],
+      // Metaprogramação com uma cor só, em todas as linguagens: @decorator
+      // (TS, Python), @Annotation (Java), #[atributo] (Rust), [[atributo]]
+      // (C++). O seletor composto vence a regra de variável/função que a
+      // gramática aplica ao nome dentro do decorator.
+      { scope: ["meta.decorator", "entity.name.function.decorator", "punctuation.decorator",
+                "punctuation.definition.decorator", "meta.decorator variable.other",
+                "meta.decorator entity.name.function", "meta.function.decorator support.type",
+                "meta.function.decorator support.function",
+                "meta.function.decorator entity.name.function",
+                "storage.type.annotation", "punctuation.definition.annotation",
+                "meta.attribute.rust", "punctuation.definition.attribute",
+                "punctuation.brackets.attribute",
+                "entity.other.attribute", "punctuation.section.attribute"],
         settings: { foreground: syn("decorator") } },
+      // Lifetimes do Rust ('a) são parâmetros genéricos: cor de tipo, em itálico.
+      { scope: ["entity.name.type.lifetime", "punctuation.definition.lifetime",
+                "storage.modifier.lifetime"],
+        settings: { foreground: syn("type"), fontStyle: "italic" } },
 
       { scope: ["variable.parameter"],
         settings: { foreground: syn("parameter"), fontStyle: "italic" } },
@@ -564,15 +650,21 @@ export function generateVscodeTheme(p: PaletteFile): object {
       { scope: ["entity.other.attribute-name"],
         settings: { foreground: syn("attribute"), fontStyle: "italic" } },
 
-      { scope: ["string.regexp"],
+      { scope: ["string.regexp", "keyword.control.anchor.regexp",
+                "keyword.operator.quantifier.regexp", "keyword.operator.or.regexp",
+                "keyword.operator.negation.regexp", "string.regexp keyword.other"],
         settings: { foreground: syn("regexp") } },
+      // Nome de grupo nomeado é identificador, como (?<title>…) no TS — não tag.
+      { scope: ["entity.name.tag.named.group.regexp"],
+        settings: { foreground: syn("variable") } },
 
       { scope: ["constant.character.escape"],
         settings: { foreground: syn("escape") } },
 
       // As marcas ${ } destacam-se do corpo da template string
       { scope: ["punctuation.definition.template-expression",
-                "punctuation.section.embedded"],
+                "punctuation.section.embedded", "punctuation.definition.interpolation",
+                "meta.interpolation.rust", "storage.type.format.python"],
         settings: { foreground: syn("interpolation") } },
       // ...mas o que está DENTRO delas volta a ser código normal
       { scope: ["meta.embedded", "meta.template.expression"],
@@ -587,6 +679,9 @@ export function generateVscodeTheme(p: PaletteFile): object {
         settings: { foreground: syn("string") } },
       { scope: ["markup.underline.link"],
         settings: { foreground: syn("function") } },
+      // Também é o escopo para onde o rust-analyzer manda variáveis `mut`:
+      // o sublinhado marca mutabilidade sem gastar uma cor.
+      { scope: ["markup.underline"], settings: { fontStyle: "underline" } },
       { scope: ["markup.quote"],
         settings: { foreground: syn("quote") } },
       { scope: ["markup.list punctuation.definition.list", "beginning.punctuation.definition.list"],
@@ -636,26 +731,77 @@ export function generateVscodeTheme(p: PaletteFile): object {
         settings: { foreground: p.palette.error } },
     ],
 
+    // Tokens semânticos vêm do servidor de linguagem e pintam POR CIMA do
+    // TextMate. Tipos sem regra aqui caem no semanticTokenScopes que cada
+    // extensão declara (rust-analyzer, C#, Java, C/C++) e daí nas regras
+    // TextMate acima — por isso várias correções moram lá, nos escopos de
+    // fallback (keyword.other.rust, keyword.cs, storage.type.annotation…).
+    //
+    // NÃO existe regra para "keyword": o rust-analyzer e o Roslyn emitem
+    // keyword para quase toda palavra reservada (fn, let, pub, public, int,
+    // true…). Sem regra, ela cai em keyword.other.rust / keyword.cs (cinza),
+    // e só keyword.controlFlow / controlKeyword chegam ao scarlet.
     semanticTokenColors: {
       "function": syn("function"),
       "method": syn("function"),
+      "magicFunction": syn("function"),
       "class": syn("type"),
+      "struct": syn("type"),
+      "union": syn("type"),
       "interface": syn("type"),
       "type": syn("type"),
+      "typeAlias": syn("type"),
+      "builtinType": syn("type"),
+      "selfTypeKeyword": syn("type"),
+      "concept": syn("type"),
       "enum": syn("type"),
+      "typeParameter": syn("type"),
       "enumMember": syn("constant"),
-      // Mesmo motivo da regra TextMate acima: no TS, readonly = qualquer const.
+      "const": syn("constant"),
+      "constant": syn("constant"),
+
+      // readonly NÃO é sinônimo de constante: no TS toda const é readonly,
+      // no Java todo final, no C++ todo const. Só vira orquídea o que é
+      // constante de verdade — estático, global, de biblioteca — e, no
+      // Python, o que o Pylance marca como readonly (Final, CAIXA_ALTA).
       "variable.readonly": syn("variable"),
-      "variable.defaultLibrary": syn("builtin"),
+      "property.readonly.static": syn("constant"),
+      "variable.readonly.static": syn("constant"),
+      "variable.readonly.global": syn("constant"),
+      "variable.readonly.globalScope": syn("constant"),
+      "variable.readonly.fileScope": syn("constant"),
+      "variable.readonly.defaultLibrary": syn("constant"),
+      "variable.readonly:python": syn("constant"),
+      "variable.defaultLibrary": { foreground: syn("builtin"), italic: true },
+
       "parameter": { foreground: syn("parameter"), italic: true },
+      "selfParameter": { foreground: syn("builtin"), italic: true },
+      "clsParameter": { foreground: syn("builtin"), italic: true },
+      "selfKeyword": { foreground: syn("builtin"), italic: true },
       "property": syn("property"),
+      "annotationMember": syn("property"),
       "comment": { foreground: syn("comment"), italic: true },
       "namespace": syn("namespace"),
-      "typeParameter": syn("type"),
+      "module": syn("namespace"),
+
+      // Metaprogramação (ver regra TextMate de decorator)
       "decorator": syn("decorator"),
+      "*.decorator": syn("decorator"),
+      "annotation": syn("decorator"),
+      "attribute": syn("decorator"),
+      "builtinAttribute": syn("decorator"),
+      "deriveHelper": syn("decorator"),
+      "derive": syn("type"),
+      // Macro de C/C++ é quase sempre uma constante em CAIXA_ALTA; macro do
+      // Rust (println!, vec!) é chamada como função.
+      "macro": syn("constant"),
+      "macro:rust": syn("function"),
+      "lifetime": { foreground: syn("type"), italic: true },
+
       "number": syn("number"),
       "string": syn("string"),
-      "keyword": syn("keyword"),
+      "formatSpecifier": syn("interpolation"),
+      "escapeSequence": syn("escape"),
     },
   };
 }

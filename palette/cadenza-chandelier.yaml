@@ -40,7 +40,6 @@ roles:
   syntax:
     keyword: bronze
     tag: bronze
-    builtin: bronze
   ui:
     accent: bronze
     cursor: bronze

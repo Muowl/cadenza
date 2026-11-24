@@ -253,6 +253,58 @@ ${partes.join("\n")}
 `;
 }
 
+// Galeria: um painel por linguagem, com o trecho mais representativo de
+// cada fixture. Só TextMate — com o servidor de linguagem ativo, tipos,
+// constantes e macros ficam ainda mais precisos (ver casos semânticos em
+// check_tokens.ts).
+const GALERIA: { arquivo: string; nome: string; de: number; ate: number }[] = [
+  { arquivo: "sample.rs", nome: "Rust", de: 5, ate: 27 },
+  { arquivo: "sample.ts", nome: "TypeScript", de: 10, ate: 32 },
+  { arquivo: "sample.py", nome: "Python", de: 12, ate: 34 },
+  { arquivo: "Sample.java", nome: "Java", de: 6, ate: 28 },
+  { arquivo: "Sample.cs", nome: "C#", de: 6, ate: 28 },
+  { arquivo: "sample.cpp", nome: "C++", de: 4, ate: 26 },
+];
+
+async function galeria(p: PaletteFile): Promise<string> {
+  const tema = generateVscodeTheme(p) as Tema;
+  const k = tema.colors;
+  const COLS = 2, PW = 640, LH = 18.5, TAM = 12.5, CAB = 34;
+  const linhasPorPainel = Math.max(...GALERIA.map((g) => g.ate - g.de + 1));
+  const PH = CAB + 14 + linhasPorPainel * LH + 12;
+  const linhasGrade = Math.ceil(GALERIA.length / COLS);
+  const largura = COLS * PW, altura = linhasGrade * PH;
+  const partes: string[] = [`<rect width="${largura}" height="${altura}" fill="${k["editor.background"]}"/>`];
+  for (const [i, g] of GALERIA.entries()) {
+    const x0 = (i % COLS) * PW, y0 = Math.floor(i / COLS) * PH;
+    partes.push(
+      `<rect x="${x0}" y="${y0}" width="${PW}" height="${CAB}" fill="${k["editorGroupHeader.tabsBackground"]}"/>`,
+      `<text x="${x0 + 18}" y="${y0 + 22}" fill="${k["tab.activeForeground"]}" font-family="${SANS}" font-size="12.5">${esc(g.arquivo)}</text>`,
+      `<rect x="${x0}" y="${y0 + CAB - 2}" width="${30 + g.arquivo.length * 7.2}" height="2" fill="${k["tab.activeBorder"]}"/>`,
+      `<text x="${x0 + PW - 18}" y="${y0 + 22}" fill="${k["tab.inactiveForeground"]}" font-family="${SANS}" font-size="11.5" text-anchor="end">${esc(g.nome)}</text>`,
+      `<line x1="${x0}" y1="${y0 + CAB - 0.5}" x2="${x0 + PW}" y2="${y0 + CAB - 0.5}" stroke="${k["editorGroupHeader.tabsBorder"]}"/>`
+    );
+    if (i % COLS) partes.push(`<line x1="${x0 + 0.5}" y1="${y0}" x2="${x0 + 0.5}" y2="${y0 + PH}" stroke="${k["editorGroup.border"]}"/>`);
+    if (i >= COLS) partes.push(`<line x1="${x0}" y1="${y0 + 0.5}" x2="${x0 + PW}" y2="${y0 + 0.5}" stroke="${k["editorGroup.border"]}"/>`);
+    // Recorte por painel: linha longa não invade o vizinho
+    partes.push(`<clipPath id="painel${i}"><rect x="${x0}" y="${y0 + CAB}" width="${PW - 12}" height="${PH - CAB}"/></clipPath>`);
+    partes.push(`<g clip-path="url(#painel${i})">`);
+    const spans = await codigo(p, tema, g.arquivo);
+    for (let n = g.de; n <= g.ate; n++) {
+      const y = y0 + CAB + 14 + (n - g.de + 1) * LH - 5;
+      partes.push(
+        `<text x="${x0 + 40}" y="${y}" fill="${k["editorLineNumber.foreground"]}" font-family="${MONO}" font-size="11.5" text-anchor="end">${n}</text>`,
+        `<text x="${x0 + 54}" y="${y}" font-family="${MONO}" font-size="${TAM}" xml:space="preserve">${spans[n - 1] ?? ""}</text>`
+      );
+    }
+    partes.push(`</g>`);
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${largura} ${altura}" width="${largura}" height="${altura}">
+${partes.join("\n")}
+</svg>
+`;
+}
+
 async function main(): Promise<void> {
   const fontFiles = [
     ...["Regular", "Italic", "Medium", "SemiBold"].map((v) => join(FONTES, "geist-mono", `GeistMono-${v}.ttf`)),
@@ -270,6 +322,17 @@ async function main(): Promise<void> {
     const out = join(raiz, "assets", `preview-${p.meta.slug}.png`);
     writeFileSync(out, png);
     console.log(`✔ Preview: ${out}`);
+
+    const svgGaleria = await galeria(p);
+    const pngGaleria = new Resvg(svgGaleria, {
+      fitTo: { mode: "width", value: 2560 },
+      font: { fontFiles, loadSystemFonts: true, defaultFontFamily: SANS },
+    })
+      .render()
+      .asPng();
+    const outGaleria = join(raiz, "assets", `languages-${p.meta.slug}.png`);
+    writeFileSync(outGaleria, pngGaleria);
+    console.log(`✔ Linguagens: ${outGaleria}`);
   }
 }
 
